@@ -1,0 +1,32 @@
+# References: 
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+# https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#native-namespace-packages
+# https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freecad.easy_profile_frame"
+dynamic = ["version"]
+description = "A FreeCAD workbench designed to simplify the creation of frames using profiles, such as aluminum profiles. It also includes support for exporting Bill of Materials (BOM)."
+readme = "README.md"
+license = {file = "LICENSE"}
+maintainers = [
+    {name = "Tim Tu", email = "ovo-tim@qq.com"
+    },
+]
+requires-python = ">=3.8"
+dependencies = [""]
+
+[project.urls]
+source = "https://github.com/ovo-Tim/easy-profile-frame"
+
+[tool.setuptools]
+packages = ["freecad", "freecad.easy_profile_frame"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "freecad.easy_profile_frame.__version__"}
