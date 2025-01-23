@@ -9,7 +9,8 @@ from PySide6.QtWidgets import QWidget, QButtonGroup
 from PySide6.QtCore import Signal
 import Part
 import time
-import math
+from typing import Any
+from FreeCAD import Units as FCUnits
 
 translate=App.Qt.translate
 QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
@@ -58,7 +59,7 @@ def GetSubEdges(names: list[str]) -> list[str]:
                 objs.append(f'{n}:Edge{i+1}')
     return objs
 
-def GetOrCreate(name: str, obj_type: str, doc: App.Document|Body|AppPart):
+def GetOrCreate(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any:
     obj = doc.getObject(name)
     print(f'Getting object {name} Result: {obj}')
     if obj is not None:
@@ -68,19 +69,31 @@ def GetOrCreate(name: str, obj_type: str, doc: App.Document|Body|AppPart):
     else:
         return doc.newObject(obj_type, name)
 
-def CopyObj(source: App.DocumentObject|Feature, target: Body, check_existing: bool = True):
+def CopyObj(source: App.DocumentObject|Feature, target: Body) -> Any:
     '''
     Copy an object across documents.
     '''
-    if check_existing:
-        existing_obj = target.getObject(source.Name)
-        if existing_obj is not None:
-            return existing_obj
     doc = target.Document
     obj:App.DocumentObject|Feature = doc.copyObject(source)
     obj = target.addObject(obj)[0]
     obj.Label = source.Label
     return obj
+
+def GetStored(body: Body, obj: SketchObject|Feature, typeId: str):
+        if not hasattr(body, f'profile_{typeId}'):
+            body.addProperty("App::PropertyString", f"profile_{typeId}", "EPF",
+                             f"The original of {typeId} used to create the profile.")
+            body.addProperty("App::PropertyString", f"profile_{typeId}_localName", "EPF",
+                             f"The local name of {typeId} used to create the profile.")
+        if getattr(body, f"profile_{typeId}") == obj.Name:
+            return body.getObject(getattr(body, f"profile_{typeId}_localName"))
+        else:
+            sketch_type = obj.Name
+            obj = CopyObj(obj, body)
+            sketch_localName = obj.Name
+            setattr(body, f"profile_{typeId}", sketch_type)
+            setattr(body, f"profile_{typeId}_localName", sketch_localName)
+            return obj
 
 class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_Form):
     redraw = Signal()
@@ -95,11 +108,13 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
         self.frame_wire_selector_show.clicked.connect(self.show_all_wires)
         self.custom_sketch_select_btn.clicked.connect(self.select_sketch)
         self.realtime_update.toggled.connect(self.enable_realtime_update)
-        self.UPDATE_LIST = [self.auto_align,
+        self.rotate_btn.clicked.connect(self.rotate)
+        self.UPDATE_LIST = [self.auto_alignA,
+                       self.auto_alignB,
                        self.no_processing,
                        self.miter_cut,
                        self.reserved,
-                       self.fillet
+                       self.overlap
                        ]
         self.update_btn_group = QButtonGroup(self)
         for btn in self.UPDATE_LIST:
@@ -108,8 +123,35 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
 
         self.custom_sketch: SketchObject|None = None
         self.current_lib: App.Document|None = None
+        self.setup_offsetBox()
+
+        self.angle = 0
+        self.offset = (FCUnits.Quantity("0 mm"), FCUnits.Quantity("0 mm"))
+        self.offset_changed = False
 
         self.read_lib_list()
+
+    def rotate(self):
+        self.angle += 90
+        self.angle %= 360
+        self.angle_dis.setText(f"Angle: {self.angle}°")
+        self.offset_changed = True
+        self.redraw.emit()
+
+    def setup_offsetBox(self):
+        self.offsetBoxX = Gui.UiLoader().createWidget("Gui::QuantitySpinBox")
+        self.offsetBoxY = Gui.UiLoader().createWidget("Gui::QuantitySpinBox")
+        self.offsetBoxX.setProperty("unit","mm")
+        self.offsetBoxY.setProperty("unit","mm")
+        self.X_offset.addWidget(self.offsetBoxX)
+        self.Y_offset.addWidget(self.offsetBoxY)
+        self.offsetBoxX.valueChanged.connect(self._offset_changed)
+        self.offsetBoxY.valueChanged.connect(self._offset_changed)
+
+    def _offset_changed(self, _):
+        self.offset = (self.offsetBoxX.property("value"), self.offsetBoxY.property("value"))
+        self.offset_changed = True
+        self.redraw.emit()
 
     def on_radioBtn_custom_toggled(self, checked):
         if checked:
@@ -217,49 +259,7 @@ class CreateProfilesBySketchPanel:
     def cleanup(self):
         self.form.close()
 
-    def sweep(self, sketch: SketchObject, name: str):
-        '''
-        This function will automatically move and rotate the sketch to the start point of the line and sweep it.
-        '''
-        edge_sketch_name, subedge = name.split(':')
-
-        # Create new body
-        body:Body = GetOrCreate(f'frame_{name.replace(':', '_')}_body', 'PartDesign::Body', self.part)
-
-        # Copy sketch and the line
-        _t = time.time()
-
-        # if self.copied_sketche is not None:
-        #     if self.copied_sketche.Label != sketch.Label:
-        #         self.body.removeObject(self.copied_sketche)
-
-        #         self.copied_sketche = CopyObj(sketch, self.body)
-        # else:
-        #     self.copied_sketche = CopyObj(sketch, self.body)
-        # sketch = CopyObj(self.copied_sketche, self.body)
-        sketch = CopyObj(sketch, body)
-        edge_sketch = App.ActiveDocument.getObject(edge_sketch_name)
-        edge_sketch = CopyObj(edge_sketch, body)
-        print(f"Copying sketch took {time.time() - _t} s")
-
-        # Move and rotate the sketch to the start point of the line
-        _t = time.time()
-        line = edge_sketch.getSubObject(subedge)
-        sketch.AttachmentSupport = [(edge_sketch, subedge)]
-        edge_vector = line.tangentAt(0)
-        z_axis = App.Vector(0, 0, 1)
-        rotation_axis = z_axis.cross(edge_vector)
-        rotation_angle = math.degrees(z_axis.getAngle(edge_vector)) + 90
-        sketch.AttachmentOffset = App.Placement(App.Vector(0, 0, 0), App.Rotation(rotation_axis, rotation_angle))
-        sketch.MapMode = 'NormalToEdge'
-        print(f"Moving and rotating sketch took {time.time() - _t} s")
-
-        # Part API, don't work well.
-        # sweep = Part.Wire(line).makePipeShell([sketch.Shape.Wires[0]], True, False, 2)
-        # name = name.replace(':', '_')
-        # sweep_obj:Part.Feature = GetOrCreate(name, 'Part::Sweep', self.body)
-        # sweep_obj.Shape = sweep
-
+    def sweep(self, sketch: SketchObject, edge_sketch: SketchObject, subedge: str, body: Body, name: str):
         # PartDesign API
         _t = time.time()
         sweep_obj:Feature = GetOrCreate(f'frame_{name.replace(':', '_')}', 'PartDesign::AdditivePipe', body)
@@ -270,8 +270,6 @@ class CreateProfilesBySketchPanel:
 
         edge_sketch.Visibility = False
         sketch.Visibility = False
-
-        self.drawed[name] = body
 
     def _draw(self):
         # Get the sketch
@@ -292,17 +290,52 @@ class CreateProfilesBySketchPanel:
         if self.form.no_processing.isChecked():
             self.draw(sketch, lines, 'NoProcessing')
 
+    def offset(self, sketch: SketchObject):
+        # Rotate and offset
+        if not self.form.offset_changed:
+            return
+        sketch.AttachmentOffset.Base = App.Vector(*self.form.offset, FCUnits.Quantity(0))
+        rotation = App.Rotation(App.Vector(0,0,1), float(self.form.angle))
+        sketch.AttachmentOffset.Rotation = rotation
+        sketch.recompute()
+        self.form.offset_changed = False
+
+    def no_processing(self, sketch: SketchObject, lines: list[str]):
+        for name in lines:
+            edge_sketch_name, subedge = name.split(':')
+
+            # Create new body
+            body:Body = GetOrCreate(f'frame_{name.replace(':', '_')}_body', 'PartDesign::Body', self.part)
+
+            # Copy sketch and the line
+            _t = time.time()
+            sketch = GetStored(body, sketch, 'sketch')
+            edge_sketch = App.ActiveDocument.getObject(edge_sketch_name)
+            edge_sketch = GetStored(body, edge_sketch, 'edge_sketch')
+            print(f"Copying sketch took {time.time() - _t} s")
+
+            # Move the sketch to the start point of the line
+            _t = time.time()
+            sketch.AttachmentSupport = [(edge_sketch, subedge)]
+            sketch.MapMode = 'NormalToEdge'
+            print(f"Moving and rotating sketch took {time.time() - _t} s")
+
+            self.offset(sketch)
+
+            self.sweep(sketch, edge_sketch, subedge, body, name)
+
+            self.drawed[name] = body
+
     def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
             remove_list = set(self.drawed.keys()) - set(lines)
-            print(f"Drawed: {self.drawed.keys()} Drawing: {lines} Remove: {remove_list}")
             for name in remove_list:
                 self.drawed[name].removeObjectsFromDocument()
                 App.ActiveDocument.removeObject(self.drawed[name].Name)
                 self.drawed.pop(name)
+
         if joint_type == 'NoProcessing':
-            for line in lines:
-                self.sweep(sketch, line)
+            self.no_processing(sketch, lines)
 
 class CreateProfilesCommandBase:
 

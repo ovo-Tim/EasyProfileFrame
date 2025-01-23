@@ -16,15 +16,15 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
-    QGroupBox, QHBoxLayout, QLabel, QListWidget,
-    QListWidgetItem, QPushButton, QRadioButton, QSizePolicy,
-    QVBoxLayout, QWidget)
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+    QListWidget, QListWidgetItem, QPushButton, QRadioButton,
+    QSizePolicy, QSpacerItem, QVBoxLayout, QWidget)
 
 class Ui_Form(object):
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
-        Form.resize(551, 722)
+        Form.resize(601, 918)
         self.verticalLayout = QVBoxLayout(Form)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.frame_wire_selector = QGroupBox(Form)
@@ -126,20 +126,88 @@ class Ui_Form(object):
 
         self.verticalLayout.addWidget(self.profile)
 
+        self.groupBox = QGroupBox(Form)
+        self.groupBox.setObjectName(u"groupBox")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
+        self.groupBox.setSizePolicy(sizePolicy)
+        self.gridLayout = QGridLayout(self.groupBox)
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.rotate_btn = QPushButton(self.groupBox)
+        self.rotate_btn.setObjectName(u"rotate_btn")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.rotate_btn.sizePolicy().hasHeightForWidth())
+        self.rotate_btn.setSizePolicy(sizePolicy1)
+
+        self.horizontalLayout_2.addWidget(self.rotate_btn)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_2.addItem(self.horizontalSpacer)
+
+        self.angle_dis = QLabel(self.groupBox)
+        self.angle_dis.setObjectName(u"angle_dis")
+
+        self.horizontalLayout_2.addWidget(self.angle_dis)
+
+
+        self.gridLayout.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
+
+        self.groupBox_3 = QGroupBox(self.groupBox)
+        self.groupBox_3.setObjectName(u"groupBox_3")
+        self.verticalLayout_6 = QVBoxLayout(self.groupBox_3)
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.X_offset = QHBoxLayout()
+        self.X_offset.setObjectName(u"X_offset")
+        self.label_3 = QLabel(self.groupBox_3)
+        self.label_3.setObjectName(u"label_3")
+
+        self.X_offset.addWidget(self.label_3)
+
+
+        self.verticalLayout_6.addLayout(self.X_offset)
+
+        self.Y_offset = QHBoxLayout()
+        self.Y_offset.setObjectName(u"Y_offset")
+        self.label_6 = QLabel(self.groupBox_3)
+        self.label_6.setObjectName(u"label_6")
+
+        self.Y_offset.addWidget(self.label_6)
+
+
+        self.verticalLayout_6.addLayout(self.Y_offset)
+
+
+        self.gridLayout.addWidget(self.groupBox_3, 1, 0, 1, 1)
+
+
+        self.verticalLayout.addWidget(self.groupBox)
+
         self.groupBox_2 = QGroupBox(Form)
         self.groupBox_2.setObjectName(u"groupBox_2")
         self.verticalLayout_4 = QVBoxLayout(self.groupBox_2)
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.label_4 = QLabel(self.groupBox_2)
-        self.label_4.setObjectName(u"label_4")
+        self.label__ = QLabel(self.groupBox_2)
+        self.label__.setObjectName(u"label__")
 
-        self.verticalLayout_4.addWidget(self.label_4)
+        self.verticalLayout_4.addWidget(self.label__)
 
-        self.auto_align = QRadioButton(self.groupBox_2)
-        self.auto_align.setObjectName(u"auto_align")
-        self.auto_align.setChecked(True)
+        self.auto_alignA = QRadioButton(self.groupBox_2)
+        self.auto_alignA.setObjectName(u"auto_alignA")
+        self.auto_alignA.setChecked(True)
 
-        self.verticalLayout_4.addWidget(self.auto_align)
+        self.verticalLayout_4.addWidget(self.auto_alignA)
+
+        self.auto_alignB = QRadioButton(self.groupBox_2)
+        self.auto_alignB.setObjectName(u"auto_alignB")
+
+        self.verticalLayout_4.addWidget(self.auto_alignB)
 
         self.miter_cut = QRadioButton(self.groupBox_2)
         self.miter_cut.setObjectName(u"miter_cut")
@@ -156,10 +224,10 @@ class Ui_Form(object):
 
         self.verticalLayout_4.addWidget(self.no_processing)
 
-        self.fillet = QRadioButton(self.groupBox_2)
-        self.fillet.setObjectName(u"fillet")
+        self.overlap = QRadioButton(self.groupBox_2)
+        self.overlap.setObjectName(u"overlap")
 
-        self.verticalLayout_4.addWidget(self.fillet)
+        self.verticalLayout_4.addWidget(self.overlap)
 
 
         self.verticalLayout.addWidget(self.groupBox_2)
@@ -198,13 +266,20 @@ class Ui_Form(object):
 #endif // QT_CONFIG(tooltip)
         self.custom_sketch_select_btn.setText(QCoreApplication.translate("Form", u"Select", None))
         self.custom_sketch_label.setText(QCoreApplication.translate("Form", u"Please select...", None))
+        self.groupBox.setTitle(QCoreApplication.translate("Form", u"Move", None))
+        self.rotate_btn.setText(QCoreApplication.translate("Form", u"Rotate", None))
+        self.angle_dis.setText(QCoreApplication.translate("Form", u"Angle: 0", None))
+        self.groupBox_3.setTitle(QCoreApplication.translate("Form", u"Offset", None))
+        self.label_3.setText(QCoreApplication.translate("Form", u"X:", None))
+        self.label_6.setText(QCoreApplication.translate("Form", u"Y:", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("Form", u"Corner joint method", None))
-        self.label_4.setText(QCoreApplication.translate("Form", u"It's easy to modify later.", None))
-        self.auto_align.setText(QCoreApplication.translate("Form", u"Auto-Alignment", None))
-        self.miter_cut.setText(QCoreApplication.translate("Form", u"Miter Cut", None))
+        self.label__.setText(QCoreApplication.translate("Form", u"It's easy to modify later.", None))
+        self.auto_alignA.setText(QCoreApplication.translate("Form", u"Auto-Alignment A", None))
+        self.auto_alignB.setText(QCoreApplication.translate("Form", u"Auto-Alignment B", None))
+        self.miter_cut.setText(QCoreApplication.translate("Form", u"Miter Cut(Support non-rectangular)", None))
         self.reserved.setText(QCoreApplication.translate("Form", u"Reserved(Manual stretch later)", None))
         self.no_processing.setText(QCoreApplication.translate("Form", u"No processing(Stretch  according to the original line length)", None))
-        self.fillet.setText(QCoreApplication.translate("Form", u"Fillet", None))
+        self.overlap.setText(QCoreApplication.translate("Form", u"Overlap", None))
         self.realtime_update.setText(QCoreApplication.translate("Form", u"Real-time update view", None))
     # retranslateUi
 

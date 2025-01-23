@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>551</width>
-    <height>722</height>
+    <width>601</width>
+    <height>918</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -143,22 +143,102 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title">
+      <string>Move</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QPushButton" name="rotate_btn">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Rotate</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="angle_dis">
+          <property name="text">
+           <string>Angle: 0</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>Offset</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_6">
+         <item>
+          <layout class="QHBoxLayout" name="X_offset">
+           <item>
+            <widget class="QLabel" name="label_3">
+             <property name="text">
+              <string>X:</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="Y_offset">
+           <item>
+            <widget class="QLabel" name="label_6">
+             <property name="text">
+              <string>Y:</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
       <string>Corner joint method</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
-       <widget class="QLabel" name="label_4">
+       <widget class="QLabel" name="label__">
         <property name="text">
          <string>It's easy to modify later.</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="auto_align">
+       <widget class="QRadioButton" name="auto_alignA">
         <property name="text">
-         <string>Auto-Alignment</string>
+         <string>Auto-Alignment A</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -166,9 +246,16 @@
        </widget>
       </item>
       <item>
+       <widget class="QRadioButton" name="auto_alignB">
+        <property name="text">
+         <string>Auto-Alignment B</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QRadioButton" name="miter_cut">
         <property name="text">
-         <string>Miter Cut</string>
+         <string>Miter Cut(Support non-rectangular)</string>
         </property>
        </widget>
       </item>
@@ -187,9 +274,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="fillet">
+       <widget class="QRadioButton" name="overlap">
         <property name="text">
-         <string>Fillet</string>
+         <string>Overlap</string>
         </property>
        </widget>
       </item>
