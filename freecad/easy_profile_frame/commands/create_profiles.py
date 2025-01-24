@@ -1,99 +1,19 @@
 import FreeCADGui as Gui
 import FreeCAD as App
-from FreeCAD import Part
 import os
 from freecad.easy_profile_frame import ICONPATH, RESSOURCESPATH
 from freecad.easy_profile_frame.resources.ui import CreateProfilesBySketchPanel as CreateProfilesBySketchPanelUI
 from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Part2DObject, Edge, Feature, Body, AppPart
 from PySide6.QtWidgets import QWidget, QButtonGroup
 from PySide6.QtCore import Signal
-import Part
-import time
-from typing import Any
 from FreeCAD import Units as FCUnits
+from .ProfileFrameObject import CreateProfileFrameBody
+from .utils import GetAllWireNames, GetSubEdges, IsAllWires, CopyObj
 
 translate=App.Qt.translate
 QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
 LIB_PATH = os.path.join(RESSOURCESPATH, "PartLib")
 
-def IsAllWires(objects: list[SelectionObject]) -> bool:
-    for obj in objects:
-        if obj.Object.TypeId == 'Sketcher::SketchObject' or obj.Object.TypeId == 'Part::Part2DObjectPython':
-            continue
-        sub_objs: tuple[Part.Shape] = obj.SubObjects
-        for subobj in sub_objs:
-            if not isinstance(subobj, Part.Edge):
-                return False
-    return True
-
-def GetAllWireNames(objects: list[SelectionObject]) -> list[str]:
-    '''
-    This might return an object like 'Sketch' or 'Line' or a subobject like 'Sketch:Edge1'.
-    You might need to get subobject by `FreeCAD.ActiveDocument.getObject("Sketch").getSubObject("Edge1")`.
-    '''
-    wires: list[str] = []
-    for obj in objects:
-        sub_obj_names: tuple[str, ...] = obj.SubElementNames
-        if (obj.Object.TypeId == 'Sketcher::SketchObject' or obj.Object.TypeId == 'Part::Part2DObjectPython') and sub_obj_names == ():
-            # If user directly select a sketch object or a line created by Draft.
-            wires.append(obj.Object.Name)
-            continue
-        for subobjname in sub_obj_names:
-            if 'Edge' in subobjname: # Let's hope this won't be a problem.
-                wires.append(f'{obj.Object.Name}:{subobjname}')
-    return wires
-
-def GetSubEdges(names: list[str]) -> list[str]:
-    '''
-    Return {name: Part.Edge}.
-    '''
-    objs = []
-    for n in names:
-        if ':' in n:
-            parent, subobj = n.split(':')
-            obj = App.ActiveDocument.getObject(parent).getSubObject(subobj)
-            if isinstance(obj, Part.Edge):
-                objs.append(n)
-        else:
-            for i, edge in enumerate(App.ActiveDocument.getObject(n).Shape.Edges):
-                objs.append(f'{n}:Edge{i+1}')
-    return objs
-
-def GetOrCreate(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any:
-    obj = doc.getObject(name)
-    print(f'Getting object {name} Result: {obj}')
-    if obj is not None:
-        return obj
-    if isinstance(doc, App.Document):
-        return doc.addObject(obj_type, name)
-    else:
-        return doc.newObject(obj_type, name)
-
-def CopyObj(source: App.DocumentObject|Feature, target: Body) -> Any:
-    '''
-    Copy an object across documents.
-    '''
-    doc = target.Document
-    obj:App.DocumentObject|Feature = doc.copyObject(source)
-    obj = target.addObject(obj)[0]
-    obj.Label = source.Label
-    return obj
-
-def GetStored(body: Body, obj: SketchObject|Feature, typeId: str):
-        if not hasattr(body, f'profile_{typeId}'):
-            body.addProperty("App::PropertyString", f"profile_{typeId}", "EPF",
-                             f"The original of {typeId} used to create the profile.")
-            body.addProperty("App::PropertyString", f"profile_{typeId}_localName", "EPF",
-                             f"The local name of {typeId} used to create the profile.")
-        if getattr(body, f"profile_{typeId}") == obj.Name:
-            return body.getObject(getattr(body, f"profile_{typeId}_localName"))
-        else:
-            sketch_type = obj.Name
-            obj = CopyObj(obj, body)
-            sketch_localName = obj.Name
-            setattr(body, f"profile_{typeId}", sketch_type)
-            setattr(body, f"profile_{typeId}_localName", sketch_localName)
-            return obj
 
 class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_Form):
     redraw = Signal()
@@ -127,7 +47,6 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
 
         self.angle = 0
         self.offset = (FCUnits.Quantity("0 mm"), FCUnits.Quantity("0 mm"))
-        self.offset_changed = False
 
         self.read_lib_list()
 
@@ -135,7 +54,6 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
         self.angle += 90
         self.angle %= 360
         self.angle_dis.setText(f"Angle: {self.angle}°")
-        self.offset_changed = True
         self.redraw.emit()
 
     def setup_offsetBox(self):
@@ -150,7 +68,6 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
 
     def _offset_changed(self, _):
         self.offset = (self.offsetBoxX.property("value"), self.offsetBoxY.property("value"))
-        self.offset_changed = True
         self.redraw.emit()
 
     def on_radioBtn_custom_toggled(self, checked):
@@ -259,18 +176,6 @@ class CreateProfilesBySketchPanel:
     def cleanup(self):
         self.form.close()
 
-    def sweep(self, sketch: SketchObject, edge_sketch: SketchObject, subedge: str, body: Body, name: str):
-        # PartDesign API
-        _t = time.time()
-        sweep_obj:Feature = GetOrCreate(f'frame_{name.replace(':', '_')}', 'PartDesign::AdditivePipe', body)
-        sweep_obj.Profile = sketch
-        sweep_obj.Spine = (edge_sketch, [subedge])
-        sweep_obj.recompute()
-        print(f"Sweeping took {time.time() - _t} s")
-
-        edge_sketch.Visibility = False
-        sketch.Visibility = False
-
     def _draw(self):
         # Get the sketch
         sketch: SketchObject|None = None
@@ -287,46 +192,24 @@ class CreateProfilesBySketchPanel:
         print(f"Drawing { lines } on { sketch }")
         if sketch is None:
             return
+        sketch = CopyObj(sketch, self.part)
+        sketch.Visibility = False
         if self.form.no_processing.isChecked():
-            self.draw(sketch, lines, 'NoProcessing')
+            self.draw(sketch.Name, lines, 'NoProcessing')
 
-    def offset(self, sketch: SketchObject):
-        # Rotate and offset
-        if not self.form.offset_changed:
-            return
-        sketch.AttachmentOffset.Base = App.Vector(*self.form.offset, FCUnits.Quantity(0))
-        rotation = App.Rotation(App.Vector(0,0,1), float(self.form.angle))
-        sketch.AttachmentOffset.Rotation = rotation
-        sketch.recompute()
-        self.form.offset_changed = False
-
-    def no_processing(self, sketch: SketchObject, lines: list[str]):
+    def no_processing(self, sketch: str, lines: list[str]):
         for name in lines:
-            edge_sketch_name, subedge = name.split(':')
-
             # Create new body
-            body:Body = GetOrCreate(f'frame_{name.replace(':', '_')}_body', 'PartDesign::Body', self.part)
+            obj = CreateProfileFrameBody(sketch, name, self.part, f'Frame_{name}')
+            self.drawed[name] = obj
+            # Set offset and rotation
+            obj.OffsetX = self.form.offsetBoxX.property("value")
+            obj.OffsetY = self.form.offsetBoxY.property("value")
+            obj.Angle = self.form.angle
+            obj.recompute()
 
-            # Copy sketch and the line
-            _t = time.time()
-            sketch = GetStored(body, sketch, 'sketch')
-            edge_sketch = App.ActiveDocument.getObject(edge_sketch_name)
-            edge_sketch = GetStored(body, edge_sketch, 'edge_sketch')
-            print(f"Copying sketch took {time.time() - _t} s")
 
-            # Move the sketch to the start point of the line
-            _t = time.time()
-            sketch.AttachmentSupport = [(edge_sketch, subedge)]
-            sketch.MapMode = 'NormalToEdge'
-            print(f"Moving and rotating sketch took {time.time() - _t} s")
-
-            self.offset(sketch)
-
-            self.sweep(sketch, edge_sketch, subedge, body, name)
-
-            self.drawed[name] = body
-
-    def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
+    def draw(self, sketch: str, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
             remove_list = set(self.drawed.keys()) - set(lines)
             for name in remove_list:
