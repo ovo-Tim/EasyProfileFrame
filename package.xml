@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
+
+  <name>EasyProfileFrame</name>
+
+  <description>A FreeCAD workbench designed to simplify the creation of frames using profiles, such as aluminum profiles. It also includes support for exporting Bill of Materials (BOM).</description>
+
+  <version>0.0.1</version>
+
+  <date>2025-01-25</date>
+
+  <license file="LICENSE">LGPLv3</license>
+
+  <url branch="main" type="repository">https://github.com/ovo-Tim/EasyProfileFrame.git</url>
+
+  <url type="readme">https://github.com/ovo-Tim/EasyProfileFrame/raw/main/README.md</url>
+
+  <author email="ovo-tim@qq.com">ovo-Tim</author>
+
+  <icon>freecad/easy_profile_frame/resources/icons/MakerWorkbench_Aluproft_Cmd.svg</icon>
+
+</package>

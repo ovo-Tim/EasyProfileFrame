@@ -2,6 +2,7 @@ import FreeCAD as App
 from freecad.easy_profile_frame import ICONPATH
 import os
 from freecad.easy_profile_frame.typing import SketchObject, AppPart, Body
+from typing import TYPE_CHECKING
 from .utils import GetStored, GetOrCreate
 
 class CustomObjectViewProvider:
@@ -44,7 +45,7 @@ class ProfileFrameObject:
         """Apply offset and rotation to the sketch"""
         # Check if OffsetX, OffsetY, or Angle has changed
         if (offset_x == self._last_offset_x and offset_y == self._last_offset_y and angle == self._last_angle):
-            print("No change")
+            # print("No change")
             return
 
         # Convert offsets to a vector
@@ -96,7 +97,7 @@ class ProfileFrameObject:
         sketch.recompute()
 
         # Perform the sweep
-        result_shape = self.sweep(sketch, edge_sketch, subedge, obj, obj.EdgeName)
+        self.sweep(sketch, edge_sketch, subedge, obj, obj.EdgeName)
 
         # Ensure the geometry is visible
         obj.purgeTouched()
@@ -114,6 +115,9 @@ class ProfileFrameObject:
         sketch.Visibility = False
 
         return sweep_obj
+
+    def __getstate__(self):
+        return None
 
 def CreateProfileFrameBody(SketchName: str, EdgeName: str, doc: App.Document|AppPart = None, name = "ProfileFrameBody"):
     ''' Note: The sketch and edge must be in the current document. '''
