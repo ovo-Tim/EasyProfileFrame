@@ -46,10 +46,9 @@ def GetSubEdges(names: list[str]) -> list[str]:
                 objs.append(f'{n}:Edge{i+1}')
     return objs
 
-def GetOrCreate(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any:
+def GetExistent(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any:
     '''Get an object from a document if it exists, otherwise create a new one.'''
     obj = doc.getObject(name)
-    print(f'Getting object {name} Result: {obj}')
     if obj is not None:
         return obj
     if isinstance(doc, App.Document):

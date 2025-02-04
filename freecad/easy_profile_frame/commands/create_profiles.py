@@ -3,7 +3,7 @@ import FreeCAD as App
 import os
 from freecad.easy_profile_frame import ICONPATH, RESSOURCESPATH
 from freecad.easy_profile_frame.resources.ui import CreateProfilesBySketchPanel as CreateProfilesBySketchPanelUI
-from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Part2DObject, Edge, Feature, Body, AppPart
+from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Part2DObject, Feature, Body, AppPart
 from PySide6.QtWidgets import QWidget, QButtonGroup
 from PySide6.QtCore import Signal
 from FreeCAD import Units as FCUnits
@@ -207,7 +207,6 @@ class CreateProfilesBySketchPanel:
             obj.OffsetY = self.form.offsetBoxY.property("value")
             obj.Angle = self.form.angle
             obj.recompute()
-
 
     def draw(self, sketch: str, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
