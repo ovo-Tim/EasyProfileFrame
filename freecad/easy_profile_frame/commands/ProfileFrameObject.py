@@ -105,7 +105,6 @@ class ProfileFrameObject:
 
         sketchL = obj.getObject(obj.Sketch)
         edge_sketch: SketchObject = App.ActiveDocument.getObject(edge_sketch_name)
-        sketchL.recompute()
 
         # Perform the sweep
         edge:Edge = edge_sketch.getSubObject(subedge)
@@ -146,14 +145,15 @@ class ProfileFrameObject:
 
     def pad(self, sketch: SketchObject, length: float, body:Body, name:str, reversed=False, baseFeature=None):
         pad_obj = GetExistent(f'frame_{name.replace(':', '_')}', 'PartDesign::Pad', body)
-        pad_obj.Profile = sketch
-        pad_obj.Length = length
-        pad_obj.Reversed = reversed
-        pad_obj.BaseFeature = baseFeature
-        pad_obj.recompute()
-
+        if pad_obj.Profile !=sketch or pad_obj.Length!=length or pad_obj.Reversed!=reversed or pad_obj.BaseFeature!=baseFeature:
+            pad_obj.Profile = sketch
+            pad_obj.Length = length
+            pad_obj.Reversed = reversed
+            pad_obj.BaseFeature = baseFeature
+            pad_obj.recompute()
         sketch.Visibility = False
         pad_obj.Visibility = False
+        pad_obj.purgeTouched()
         return pad_obj
 
     def __getstate__(self):
@@ -206,15 +206,17 @@ class ProfileFrameObject:
 
         # Create Pocket
         pocket_obj = GetExistent(f'Chamfer_{name}', 'PartDesign::Pocket', body)
-        pocket_obj.BaseFeature = extended_obj
-        pocket_obj.Profile = chamfer_sketch
-        pocket_obj.AlongSketchNormal = 1
-        pocket_obj.Type = 1
-        pocket_obj.Midplane = 1
-        pocket_obj.recompute()
-
+        if pocket_obj.BaseFeature!=extended_obj or pocket_obj.Profile!=chamfer_sketch:
+            pocket_obj.BaseFeature = extended_obj
+            pocket_obj.Profile = chamfer_sketch
+            pocket_obj.AlongSketchNormal = 1
+            pocket_obj.Type = 1
+            pocket_obj.Midplane = 1
+            pocket_obj.recompute()
         extended_obj.Visibility = False
         pocket_obj.Visibility = False
+        pocket_obj.purgeTouched()
+        extended_obj.purgeTouched()
         return pocket_obj, extended_length
 
     def draw_chamfer_sketch(self, chamfer_sketch: SketchObject, length: float, width: float, baseFeature, direction, offset, right):
