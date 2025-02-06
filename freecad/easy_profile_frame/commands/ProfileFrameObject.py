@@ -3,7 +3,7 @@ from freecad.easy_profile_frame import ICONPATH
 from FreeCAD import Units as FCUnits
 import os
 from freecad.easy_profile_frame.typing import SketchObject, AppPart, Body, Feature, Edge
-from .utils import GetStored, GetExistent
+from .utils import GetExistent, CopyObj
 import Part
 import math
 
@@ -32,7 +32,7 @@ class ProfileFrameObject:
         obj.addProperty("App::PropertyAngle", "Angle", "EasyProfileFrame", "Rotation angle around Z axis").Angle = 0
         obj.addProperty("App::PropertyLength", "Length", "EasyProfileFrame", "This property isn't included chamfer",
                          read_only=True).Length = 0
-        obj.addProperty("App::PropertyAngle", "ChamferAngleL", "EasyProfileFrame", "Chamfer angle of the left side. Can only be multiples of 90").ChamferAngleL = 0
+        obj.addProperty("App::PropertyAngle", "ChamferAngleL", "EasyProfileFrame", "Chamfer angle of the left side. Can only be multiples of 90").ChamferAngleL = 45
         obj.addProperty("App::PropertyLength", "ChamferLengthL", "EasyProfileFrame", "Chamfer length of the left side",
                          read_only=True).ChamferLengthL = 0.0
         obj.addProperty("App::PropertyInteger", "ChamferDirectionL", "EasyProfileFrame", "Chamfer direction of the left side, 1~4").ChamferDirectionL = 1
@@ -45,6 +45,8 @@ class ProfileFrameObject:
         self._last_offset_x = obj.OffsetX
         self._last_offset_y = obj.OffsetY
         self._last_angle = obj.Angle
+        self.chamfer_sketch_cache = None
+        self.sketchLable = None
 
         obj.addExtension('Part::AttachExtensionPython')
         obj.addExtension("App::GroupExtensionPython")
@@ -96,8 +98,8 @@ class ProfileFrameObject:
         except ValueError:
             raise ValueError("Invalid edge name format. Use 'SketchName:EdgeN'")
 
-        # Get or create a copy of the sketch
-        sketchL = GetStored(obj, App.ActiveDocument.getObject(obj.Sketch), 'sketchL')
+        sketchL = obj.getObject(obj.Sketch)
+
         edge_sketch: SketchObject = App.ActiveDocument.getObject(edge_sketch_name)
         sketchL.recompute()
 
@@ -116,14 +118,14 @@ class ProfileFrameObject:
 
         # Chamfer
         if obj.ChamferAngleL > 0:
-            baseObj = self.create_chamfer(sketchL, obj.ChamferAngleL, obj.ChamferDirectionL, obj, baseObj)
+            baseObj = self.create_chamfer(sketchL, obj.ChamferAngleL, obj.ChamferDirectionL, obj, baseObj, f"Chamfer_{obj.Name}_L")
 
         obj.Shape = baseObj.Shape
 
         # Apply offset and rotation to the obj
         self.apply_offset_and_rotation(obj, obj.OffsetX, obj.OffsetY, obj.Angle)
 
-        # obj.AttachmentSupport = [(edge_sketch, subedge)]
+        obj.AttachmentSupport = [(edge_sketch, subedge)]
         obj.MapMode = 'NormalToEdge'
 
         # Ensure the geometry is visible
@@ -168,7 +170,7 @@ class ProfileFrameObject:
         self._last_offset_y = FCUnits.Quantity(state['_last_offset_y'])
         self._last_angle = FCUnits.Quantity(state['_last_angle'])
 
-    def create_chamfer(self, sketch: SketchObject, angle: float, direction: int, body: Body, baseFeature):
+    def create_chamfer(self, sketch: SketchObject, angle: float, direction: int, body: Body, baseFeature, name):
         '''
         sketch: The sketch used to extend the profile.
         direction: 1~4
@@ -184,32 +186,35 @@ class ProfileFrameObject:
             width = xy_extremes[1] - xy_extremes[0]
         else:
             width = xy_extremes[3] - xy_extremes[2]
-        width = abs(width)
-        extended_length = abs(math.tan(math.radians(angle)) * width / 2)
+        width = round(abs(width), 5)
+        extended_length = round(abs(math.tan(math.radians(angle)) * width / 2), 5)
         # print(f"Extended length: {extended_length}")
-        extended_obj = self.pad(sketch, extended_length, body, "Chamfer", baseFeature=baseFeature)
+        extended_obj = self.pad(sketch, extended_length, body, f"Chamfer_extend_{name}", baseFeature=baseFeature)
 
         # Draw a cutting sketch
-        chamfer_sketch: SketchObject = GetExistent('chamferCuttingSketch', 'Sketcher::SketchObject', body)
-        chamfer_sketch.AttachmentSupport = [(baseFeature, '')]
-        chamfer_sketch.MapMode = 'ObjectXY'
-        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0,0,0),  App.Rotation(0, 90, direction*90))
-        chamfer_sketch.Visibility = False
-        chamfer_sketch.recompute()
+        chamfer_sketch: SketchObject = GetExistent(f'chamferCuttingSketch_{name}', 'Sketcher::SketchObject', body)
+        if self.chamfer_sketch_cache != (extended_length, width, baseFeature, direction):
+            if self.chamfer_sketch_cache is not None:
+                body.removeObject(chamfer_sketch)
+                App.ActiveDocument.removeObject(chamfer_sketch.Name)
+                chamfer_sketch: SketchObject = GetExistent(f'chamferCuttingSketch_{name}', 'Sketcher::SketchObject', body)
+            self.draw_chamfer_sketch(chamfer_sketch, extended_length, width, baseFeature, direction)
+            self.chamfer_sketch_cache = (extended_length, width, baseFeature, direction)
 
-        tx = extended_length
-        ty = width / 2
-        triangle = [(-tx, ty), (-tx, -ty), (tx, ty)]
-        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[0][0], triangle[0][1], 0),
-                                    App.Vector(triangle[1][0], triangle[1][1], 0)), False)
-        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[1][0], triangle[1][1], 0),
-                                    App.Vector(triangle[2][0], triangle[2][1], 0)), False)
-        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[2][0], triangle[2][1], 0),
-                                    App.Vector(triangle[0][0], triangle[0][1], 0)), False)
-        chamfer_sketch.recompute()
+
+        # tx = extended_length
+        # ty = width / 2
+        # triangle = [(-tx, ty), (-tx, -ty), (tx, ty)]
+        # chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[0][0], triangle[0][1], 0),
+        #                             App.Vector(triangle[1][0], triangle[1][1], 0)), False)
+        # chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[1][0], triangle[1][1], 0),
+        #                             App.Vector(triangle[2][0], triangle[2][1], 0)), False)
+        # chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[2][0], triangle[2][1], 0),
+        #                             App.Vector(triangle[0][0], triangle[0][1], 0)), False)
+        # chamfer_sketch.recompute()
 
         # Create Pocket
-        pocket_obj = GetExistent(f'Chamfer', 'PartDesign::Pocket', body)
+        pocket_obj = GetExistent(f'Chamfer_{name}', 'PartDesign::Pocket', body)
         pocket_obj.BaseFeature = extended_obj
         pocket_obj.Profile = chamfer_sketch
         pocket_obj.AlongSketchNormal = 1
@@ -221,7 +226,31 @@ class ProfileFrameObject:
         pocket_obj.Visibility = False
         return pocket_obj
 
-def CreateProfileFrameBody(SketchName: str, EdgeName: str, doc: App.Document|AppPart = None, name = "ProfileFrameBody"):
+    def draw_chamfer_sketch(self, chamfer_sketch: SketchObject, length: float, width: float, baseFeature, direction):
+        chamfer_sketch.AttachmentSupport = [(baseFeature, '')]
+        chamfer_sketch.MapMode = 'ObjectXY'
+        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0,0,0),  App.Rotation(0, 90, direction*90))
+        chamfer_sketch.Visibility = False
+        chamfer_sketch.recompute()
+
+        tx = length
+        ty = width / 2
+        triangle = [(-tx, ty), (-tx, -ty), (tx, ty)]
+        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[0][0], triangle[0][1], 0),
+                                    App.Vector(triangle[1][0], triangle[1][1], 0)), False)
+        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[1][0], triangle[1][1], 0),
+                                    App.Vector(triangle[2][0], triangle[2][1], 0)), False)
+        chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[2][0], triangle[2][1], 0),
+                                    App.Vector(triangle[0][0], triangle[0][1], 0)), False)
+        chamfer_sketch.recompute()
+
+    def setSketch(self, obj, sketch: SketchObject):
+        if sketch.Label == self.sketchLable:
+            return
+        obj.Sketch = CopyObj(sketch, obj).Name
+        self.sketchLable = sketch.Label
+
+def CreateProfileFrameBody(Sketch: SketchObject, EdgeName: str, doc: App.Document|AppPart = None, name = "ProfileFrameBody"):
     ''' Note: The sketch and edge must be in the current document. '''
     if doc is None:
         doc = App.activeDocument()
@@ -235,6 +264,6 @@ def CreateProfileFrameBody(SketchName: str, EdgeName: str, doc: App.Document|App
             obj = doc.newObject('PartDesign::FeatureAdditivePython', name)
         # Initialize the object
         ProfileFrameObject(obj)
-    obj.Sketch = SketchName
+    obj.Proxy.setSketch(obj, Sketch)
     obj.EdgeName = EdgeName
     return obj

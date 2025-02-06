@@ -162,16 +162,14 @@ class CreateProfilesBySketchPanel:
     '''
     def __init__(self):
         self.form = CreateProfilesBySketchWidget()
-        self.form.redraw.connect(self._draw)
         self.form.add_wires()
         self.drawed: dict[str, Body] = {}
-        self.my_part = None
 
         # self.body:Body = App.ActiveDocument.addObject('PartDesign::Body', 'Body')
         self.part: AppPart = App.ActiveDocument.addObject('App::Part', 'Part')
-        self.copied_sketche: SketchObject|None = None
 
         self._draw()
+        self.form.redraw.connect(self._draw)
 
     def cleanup(self):
         self.form.close()
@@ -181,7 +179,6 @@ class CreateProfilesBySketchPanel:
         sketch: SketchObject|None = None
         if self.form.radioBtn_lib.isChecked():
             sketch = self.form.current_lib.getObjectsByLabel(self.form.lib_sketches.currentText())[0]
-            print(self.form.current_lib, self.form.lib_sketches.currentText())
         elif self.form.radioBtn_custom.isChecked():
             sketch = self.form.current_lib.getObjectsByLabel(self.form.custom_sketch)[0]
 
@@ -189,15 +186,13 @@ class CreateProfilesBySketchPanel:
         lineNames: list[str] = [self.form.wire_list.item(i).text() for i in range(self.form.wire_list.count())]
         lines: list[str] = GetSubEdges(lineNames)
 
-        print(f"Drawing { lines } on { sketch }")
         if sketch is None:
             return
-        sketch = CopyObj(sketch, self.part)
-        sketch.Visibility = False
-        if self.form.no_processing.isChecked():
-            self.draw(sketch.Name, lines, 'NoProcessing')
 
-    def no_processing(self, sketch: str, lines: list[str]):
+        if self.form.no_processing.isChecked():
+            self.draw(sketch, lines, 'NoProcessing')
+
+    def no_processing(self, sketch: SketchObject, lines: list[str]):
         for name in lines:
             # Create new body
             obj = CreateProfileFrameBody(sketch, name, self.part, f'Frame_{name}')
@@ -208,7 +203,7 @@ class CreateProfilesBySketchPanel:
             obj.Angle = self.form.angle
             obj.recompute()
 
-    def draw(self, sketch: str, lines: list[str], joint_type: str, remove_old: bool = True):
+    def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
             remove_list = set(self.drawed.keys()) - set(lines)
             for name in remove_list:

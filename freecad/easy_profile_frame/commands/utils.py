@@ -56,33 +56,12 @@ def GetExistent(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any
     else:
         return doc.newObject(obj_type, name)
 
-def CopyObj(source: App.DocumentObject|Feature, target: Body|AppPart, check_exist: bool = True) -> Any:
+def CopyObj(source: App.DocumentObject|Feature, target: Body|AppPart) -> Any:
     '''
     Copy an object across documents.
     '''
-    if check_exist:
-        # I really don't like this, but is seems that there is no way to check if an object exists by label.
-        for child in target.OutList:
-            if child.Label == source.Label:
-                return child
     doc = target.Document
     obj:App.DocumentObject|Feature = doc.copyObject(source)
     obj = target.addObject(obj)[0]
     obj.Label = source.Label
     return obj
-
-def GetStored(body: Body, obj: SketchObject|Feature, typeId: str):
-    if not hasattr(body, f'profile_{typeId}'):
-        body.addProperty("App::PropertyString", f"profile_{typeId}", "EPF",
-                            f"The original of {typeId} used to create the profile.")
-        body.addProperty("App::PropertyString", f"profile_{typeId}_localName", "EPF",
-                            f"The local name of {typeId} used to create the profile.")
-    if getattr(body, f"profile_{typeId}") == obj.Name:
-        return body.getObject(getattr(body, f"profile_{typeId}_localName"))
-    else:
-        sketch_type = obj.Name
-        obj = CopyObj(obj, body)
-        sketch_localName = obj.Name
-        setattr(body, f"profile_{typeId}", sketch_type)
-        setattr(body, f"profile_{typeId}_localName", sketch_localName)
-        return obj
