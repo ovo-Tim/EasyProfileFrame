@@ -38,7 +38,7 @@ class ProfileFrameObject:
         obj.addProperty("App::PropertyLength", "ExtendedLengthL", "EasyProfileFrame", "Extended length of the left side. \
                         (When Chanfer Angle is set, this property will be determined autmaticallyy)").ExtendedLengthL = 0.0
 
-        obj.addProperty("App::PropertyAngle", "ChamferAngleR", "EasyProfileFrame", "Chamfer angle of the right side. Can only be multiples of 90").ChamferAngleR = 45
+        obj.addProperty("App::PropertyAngle", "ChamferAngleR", "EasyProfileFrame", "Chamfer angle of the right side. Can only be multiples of 90").ChamferAngleR = 0
         obj.addProperty("App::PropertyLength", "ChamferLengthR", "EasyProfileFrame", "Chamfer length of the right side",
                          read_only=True).ChamferLengthR = 0.0
         obj.addProperty("App::PropertyInteger", "ChamferDirectionR", "EasyProfileFrame", "Chamfer direction of the right side, 1~4").ChamferDirectionR = 1
@@ -49,7 +49,7 @@ class ProfileFrameObject:
         self._last_offset_x = obj.OffsetX
         self._last_offset_y = obj.OffsetY
         self._last_angle = obj.Angle
-        self.chamfer_sketch_cache = None
+        self.chamfer_sketch_cache:list = [None, None]
         self.sketchLableL = None
         self.sketchR:tuple[str, str]|None = None # (Label, Name)
 
@@ -116,19 +116,19 @@ class ProfileFrameObject:
         if obj.ChamferAngleL > 0:
             baseObj, extended_length = self.create_chamfer(sketchL, obj.ChamferAngleL, obj.ChamferDirectionL, obj, baseObj, f"Chamfer_{obj.Name}_L")
             obj.ExtendedLengthL = FCUnits.Quantity(extended_length)
-            obj.setEditorMode('ChamferAngleL', 1)
+            obj.setEditorMode('ExtendedLengthL', 1)
         else:
             obj.ExtendedLengthL = FCUnits.Quantity(0)
-            obj.setEditorMode('ChamferAngleL', 0)
+            obj.setEditorMode('ExtendedLengthL', 0)
         if obj.ChamferAngleR > 0:
             sketchR = self.getSketchR(obj, pad_length)
             baseObj, extended_length = self.create_chamfer(sketchR, obj.ChamferAngleR, obj.ChamferDirectionR, obj, baseObj, f"Chamfer_{obj.Name}_R",
                                                            offset=-pad_length, right=True)
             obj.ExtendedLengthR = FCUnits.Quantity(extended_length)
-            obj.setEditorMode('ChamferAngleR', 1)
+            obj.setEditorMode('ExtendedLengthR', 1)
         else:
             obj.ExtendedLengthR = FCUnits.Quantity(0)
-            obj.setEditorMode('ChamferAngleR', 0)
+            obj.setEditorMode('ExtendedLengthR', 0)
 
 
         obj.Length = FCUnits.Quantity(pad_length + obj.ExtendedLengthL.Value + obj.ExtendedLengthR.Value)
@@ -161,7 +161,8 @@ class ProfileFrameObject:
                  '_last_offset_y': self._last_offset_y.toStr(),
                  '_last_angle': self._last_angle.toStr(),
                  'chamfer_sketch_cache': self.chamfer_sketch_cache,
-                 'sketchLable': self.sketchLableL
+                 'sketchLableL': self.sketchLableL,
+                 'sketchR': self.sketchR,
                  }
         return state
 
@@ -170,7 +171,8 @@ class ProfileFrameObject:
         self._last_offset_y = FCUnits.Quantity(state['_last_offset_y'])
         self._last_angle = FCUnits.Quantity(state['_last_angle'])
         self.chamfer_sketch_cache = state['chamfer_sketch_cache']
-        self.sketchLableL = state['sketchLable']
+        self.sketchLableL = state['sketchLableL']
+        self.sketchR = state['sketchR']
 
     def create_chamfer(self, sketch: SketchObject, angle: float, direction: int, body: Body, baseFeature, name, offset=0.0, right=False):
         '''
@@ -194,13 +196,13 @@ class ProfileFrameObject:
 
         # Draw a cutting sketch
         chamfer_sketch: SketchObject = GetExistent(f'chamferCuttingSketch_{name}', 'Sketcher::SketchObject', body)
-        if self.chamfer_sketch_cache != (extended_length, width, baseFeature.Name, direction):
-            if self.chamfer_sketch_cache is not None:
-                body.removeObject(chamfer_sketch)
-                App.ActiveDocument.removeObject(chamfer_sketch.Name)
-                chamfer_sketch: SketchObject = GetExistent(f'chamferCuttingSketch_{name}', 'Sketcher::SketchObject', body)
+        if self.chamfer_sketch_cache[right] != (extended_length, width, baseFeature.Name, direction):
+            print(f"{self.chamfer_sketch_cache[right]} != {(extended_length, width, baseFeature.Name, direction)}, redrawing")
+            if self.chamfer_sketch_cache[right] is not None:
+                chamfer_sketch.Geometry = []
+                chamfer_sketch.Constraints = []
             self.draw_chamfer_sketch(chamfer_sketch, extended_length, width, baseFeature, direction, offset, right=right)
-            self.chamfer_sketch_cache = (extended_length, width, baseFeature.Name, direction)
+            self.chamfer_sketch_cache[right] = (extended_length, width, baseFeature.Name, direction)
 
         # Create Pocket
         pocket_obj = GetExistent(f'Chamfer_{name}', 'PartDesign::Pocket', body)
@@ -218,7 +220,7 @@ class ProfileFrameObject:
     def draw_chamfer_sketch(self, chamfer_sketch: SketchObject, length: float, width: float, baseFeature, direction, offset, right):
         chamfer_sketch.AttachmentSupport = [(baseFeature, '')]
         chamfer_sketch.MapMode = 'ObjectXY'
-        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0 , 0, offset),  App.Rotation(0, 90 + right*90, direction*90))
+        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0 , 0, offset),  App.Rotation(0, 90 + right*180, direction*90))
         chamfer_sketch.Visibility = False
         chamfer_sketch.recompute()
 
