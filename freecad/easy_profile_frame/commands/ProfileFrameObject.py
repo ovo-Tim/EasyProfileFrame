@@ -129,7 +129,6 @@ class ProfileFrameObject:
             obj.ExtendedLengthR = FCUnits.Quantity(0)
             obj.setEditorMode('ExtendedLengthR', 0)
 
-
         obj.Length = FCUnits.Quantity(pad_length + obj.ExtendedLengthL.Value + obj.ExtendedLengthR.Value)
 
         obj.Shape = baseObj.Shape
@@ -178,7 +177,6 @@ class ProfileFrameObject:
         '''
         sketch: The sketch used to extend the profile.
         direction: 1~4
-        point: The point used to attach the cutting sketch.
         '''
         # print(f"Creating chamfer, angle: {angle}, direction: {direction}")
         boundBox = sketch.Shape.BoundBox

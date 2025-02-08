@@ -14,6 +14,13 @@ translate=App.Qt.translate
 QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
 LIB_PATH = os.path.join(RESSOURCESPATH, "PartLib")
 
+DIRECTION_MAP = {
+    3: 1,
+    1: 3,
+    2: 4,
+    4: 2
+}
+
 def getObjectFromName(name:str, doc:App.Document|Body):
     obj, subname = name.split(':')
     return doc.getObject(obj).getSubObject(subname)
@@ -208,12 +215,40 @@ class CreateProfilesBySketchPanel:
             self.set_offset(obj)
             obj.recompute()
 
-    def interact_vertex(self, vertex1, vertex2) -> tuple[Vertex, int, int]|None:
+    def getInteract_vertex(self, vertex1, vertex2) -> tuple[Vertex, int, int]|None:
         points1 = [i.Point for i in vertex1]
         points2 = [i.Point for i in vertex2]
         for j, p in enumerate(points1):
             for k, p2 in enumerate(points2):
                 if p == p2: return (p, j, k)
+
+    def getChamferDirection(self, vertex1: list, vertex2: list, interact_vertex: Vertex):
+        for i in vertex1:
+            if i.Point != interact_vertex:
+                print(interact_vertex, i.Point)
+                dire1 = interact_vertex - i.Point
+                break
+        for i in vertex2:
+            if i.Point!= interact_vertex:
+                print(interact_vertex, i.Point)
+                dire2 = interact_vertex - i.Point
+                break
+
+        j_hat = dire1
+        i_hat = App.Matrix(App.Vector(0,-1,0),App.Vector(1,0,0),App.Vector(0,0,1)) * j_hat
+        k_hat = App.Matrix(App.Vector(1,0,0),App.Vector(0,0,1),App.Vector(0,-1,0)) * j_hat
+        dire2:Vertex = App.Matrix(i_hat, j_hat, k_hat) * dire2
+
+        if dire2.x > 0 and dire2.z == 0:
+            return 1
+        elif dire2.x < 0 and dire2.z == 0:
+            return 3
+        elif dire2.z > 0 and dire2.x == 0:
+            return 2
+        elif dire2.z < 0 and dire2.x == 0:
+            return 4
+        else:
+            return None
 
     def miter_cut(self, sketch: SketchObject, lines: list[str]):
         self.no_processing(sketch, lines)
@@ -223,14 +258,20 @@ class CreateProfilesBySketchPanel:
                 line2_obj: Edge = getObjectFromName(line2N, App.ActiveDocument)
                 # intersections = line1_obj.Curve.intersectCC(line2_obj.Curve)
                 # intersections= [i.toShape().Point for i in intersections]
-                interact_vertex = self.interact_vertex(line1_obj.Vertexes, line2_obj.Vertexes)
+                interact_vertex = self.getInteract_vertex(line1_obj.Vertexes, line2_obj.Vertexes)
                 if interact_vertex is None:
                     continue
 
                 chamfer_angle = calculate_edges_angle(line1_obj, line2_obj)/2
+                dire = self.getChamferDirection(line1_obj.Vertexes, line2_obj.Vertexes, interact_vertex[0])
+                if dire is None:
+                    continue
                 App.Console.PrintMessage(f"Create chamfer at {interact_vertex[0]}. Angle: {chamfer_angle}° \n")
                 setattr(self.drawed[line1N], f"ChamferAngle{'R' if interact_vertex[1] else 'L'}", chamfer_angle)
                 setattr(self.drawed[line2N], f"ChamferAngle{'R' if interact_vertex[2] else 'L'}", chamfer_angle)
+
+                setattr(self.drawed[line1N], f"ChamferDirection{'R' if interact_vertex[1] else 'L'}", dire)
+                setattr(self.drawed[line2N], f"ChamferDirection{'R' if interact_vertex[2] else 'L'}", DIRECTION_MAP[dire])
 
                 self.drawed[line1N].recompute()
                 self.drawed[line2N].recompute()
