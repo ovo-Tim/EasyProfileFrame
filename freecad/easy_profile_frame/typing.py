@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     Edge = Part.Edge
     Feature = PartDesign.Feature
     Quantity = App.Base.Quantity
+    Vertex = Part.Vertex
     class Body(PartDesign.Body):
         def addObject(self, obj: App.DocumentObject) -> list[App.DocumentObject]:
             ...
@@ -27,3 +28,4 @@ else:
     Body = Any
     AppPart = Any
     Quantity = Any
+    Vertex = Any

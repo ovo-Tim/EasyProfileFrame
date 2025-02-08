@@ -3,17 +3,20 @@ import FreeCAD as App
 import os
 from freecad.easy_profile_frame import ICONPATH, RESSOURCESPATH
 from freecad.easy_profile_frame.resources.ui import CreateProfilesBySketchPanel as CreateProfilesBySketchPanelUI
-from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Part2DObject, Feature, Body, AppPart
+from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Body, AppPart, Edge, Vertex
 from PySide6.QtWidgets import QWidget, QButtonGroup
 from PySide6.QtCore import Signal
 from FreeCAD import Units as FCUnits
 from .ProfileFrameObject import CreateProfileFrameBody
-from .utils import GetAllWireNames, GetSubEdges, IsAllWires, CopyObj
+from .utils import GetAllWireNames, GetSubEdges, IsAllWires, calculate_edges_angle
 
 translate=App.Qt.translate
 QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
 LIB_PATH = os.path.join(RESSOURCESPATH, "PartLib")
 
+def getObjectFromName(name:str, doc:App.Document|Body):
+    obj, subname = name.split(':')
+    return doc.getObject(obj).getSubObject(subname)
 
 class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_Form):
     redraw = Signal()
@@ -33,8 +36,6 @@ class CreateProfilesBySketchWidget(QWidget, CreateProfilesBySketchPanelUI.Ui_For
                        self.auto_alignB,
                        self.no_processing,
                        self.miter_cut,
-                       self.reserved,
-                       self.overlap
                        ]
         self.update_btn_group = QButtonGroup(self)
         for btn in self.UPDATE_LIST:
@@ -188,20 +189,51 @@ class CreateProfilesBySketchPanel:
 
         if sketch is None:
             return
-
         if self.form.no_processing.isChecked():
             self.draw(sketch, lines, 'NoProcessing')
+        elif self.form.miter_cut.isChecked():
+            self.draw(sketch, lines, 'MiterCut')
+
+    def set_offset(self, obj):
+        # Set offset and rotation
+        obj.OffsetX = self.form.offsetBoxX.property("value")
+        obj.OffsetY = self.form.offsetBoxY.property("value")
+        obj.Angle = self.form.angle
 
     def no_processing(self, sketch: SketchObject, lines: list[str]):
         for name in lines:
             # Create new body
             obj = CreateProfileFrameBody(sketch, name, self.part, f'Frame_{name}')
             self.drawed[name] = obj
-            # Set offset and rotation
-            obj.OffsetX = self.form.offsetBoxX.property("value")
-            obj.OffsetY = self.form.offsetBoxY.property("value")
-            obj.Angle = self.form.angle
+            self.set_offset(obj)
             obj.recompute()
+
+    def interact_vertex(self, vertex1, vertex2) -> tuple[Vertex, int, int]|None:
+        points1 = [i.Point for i in vertex1]
+        points2 = [i.Point for i in vertex2]
+        for j, p in enumerate(points1):
+            for k, p2 in enumerate(points2):
+                if p == p2: return (p, j, k)
+
+    def miter_cut(self, sketch: SketchObject, lines: list[str]):
+        self.no_processing(sketch, lines)
+        for i, line1N in enumerate(lines):
+            for line2N in lines[i+1:]:
+                line1_obj: Edge = getObjectFromName(line1N, App.ActiveDocument)
+                line2_obj: Edge = getObjectFromName(line2N, App.ActiveDocument)
+                # intersections = line1_obj.Curve.intersectCC(line2_obj.Curve)
+                # intersections= [i.toShape().Point for i in intersections]
+                interact_vertex = self.interact_vertex(line1_obj.Vertexes, line2_obj.Vertexes)
+                if interact_vertex is None:
+                    continue
+
+                chamfer_angle = calculate_edges_angle(line1_obj, line2_obj)/2
+                App.Console.PrintMessage(f"Create chamfer at {interact_vertex[0]}. Angle: {chamfer_angle}° \n")
+                setattr(self.drawed[line1N], f"ChamferAngle{'R' if interact_vertex[1] else 'L'}", chamfer_angle)
+                setattr(self.drawed[line2N], f"ChamferAngle{'R' if interact_vertex[2] else 'L'}", chamfer_angle)
+
+                self.drawed[line1N].recompute()
+                self.drawed[line2N].recompute()
 
     def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
@@ -213,6 +245,8 @@ class CreateProfilesBySketchPanel:
 
         if joint_type == 'NoProcessing':
             self.no_processing(sketch, lines)
+        elif joint_type == 'MiterCut':
+            self.miter_cut(sketch, lines)
 
 class CreateProfilesCommandBase:
 

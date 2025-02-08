@@ -198,9 +198,20 @@ class Ui_Form(object):
 
         self.verticalLayout_4.addWidget(self.label__)
 
+        self.no_processing = QRadioButton(self.groupBox_2)
+        self.no_processing.setObjectName(u"no_processing")
+
+        self.verticalLayout_4.addWidget(self.no_processing)
+
+        self.miter_cut = QRadioButton(self.groupBox_2)
+        self.miter_cut.setObjectName(u"miter_cut")
+        self.miter_cut.setChecked(True)
+
+        self.verticalLayout_4.addWidget(self.miter_cut)
+
         self.auto_alignA = QRadioButton(self.groupBox_2)
         self.auto_alignA.setObjectName(u"auto_alignA")
-        self.auto_alignA.setChecked(True)
+        self.auto_alignA.setChecked(False)
 
         self.verticalLayout_4.addWidget(self.auto_alignA)
 
@@ -208,26 +219,6 @@ class Ui_Form(object):
         self.auto_alignB.setObjectName(u"auto_alignB")
 
         self.verticalLayout_4.addWidget(self.auto_alignB)
-
-        self.miter_cut = QRadioButton(self.groupBox_2)
-        self.miter_cut.setObjectName(u"miter_cut")
-
-        self.verticalLayout_4.addWidget(self.miter_cut)
-
-        self.reserved = QRadioButton(self.groupBox_2)
-        self.reserved.setObjectName(u"reserved")
-
-        self.verticalLayout_4.addWidget(self.reserved)
-
-        self.no_processing = QRadioButton(self.groupBox_2)
-        self.no_processing.setObjectName(u"no_processing")
-
-        self.verticalLayout_4.addWidget(self.no_processing)
-
-        self.overlap = QRadioButton(self.groupBox_2)
-        self.overlap.setObjectName(u"overlap")
-
-        self.verticalLayout_4.addWidget(self.overlap)
 
 
         self.verticalLayout.addWidget(self.groupBox_2)
@@ -272,14 +263,22 @@ class Ui_Form(object):
         self.groupBox_3.setTitle(QCoreApplication.translate("Form", u"Offset", None))
         self.label_3.setText(QCoreApplication.translate("Form", u"X:", None))
         self.label_6.setText(QCoreApplication.translate("Form", u"Y:", None))
+#if QT_CONFIG(tooltip)
+        self.groupBox_2.setToolTip(QCoreApplication.translate("Form", u"This method only works on profiles without offsets(Rotations are allowed).", None))
+#endif // QT_CONFIG(tooltip)
         self.groupBox_2.setTitle(QCoreApplication.translate("Form", u"Corner joint method", None))
         self.label__.setText(QCoreApplication.translate("Form", u"It's easy to modify later.", None))
-        self.auto_alignA.setText(QCoreApplication.translate("Form", u"Auto-Alignment A", None))
-        self.auto_alignB.setText(QCoreApplication.translate("Form", u"Auto-Alignment B", None))
+        self.no_processing.setText(QCoreApplication.translate("Form", u"No processing\n"
+"(Stretch  according to the original line length)", None))
         self.miter_cut.setText(QCoreApplication.translate("Form", u"Miter Cut(Support non-rectangular)", None))
-        self.reserved.setText(QCoreApplication.translate("Form", u"Reserved(Manual stretch later)", None))
-        self.no_processing.setText(QCoreApplication.translate("Form", u"No processing(Stretch  according to the original line length)", None))
-        self.overlap.setText(QCoreApplication.translate("Form", u"Overlap", None))
+#if QT_CONFIG(tooltip)
+        self.auto_alignA.setToolTip(QCoreApplication.translate("Form", u"This method only works on profiles without offsets(Rotations are allowed).", None))
+#endif // QT_CONFIG(tooltip)
+        self.auto_alignA.setText(QCoreApplication.translate("Form", u"Auto-Alignment A", None))
+#if QT_CONFIG(tooltip)
+        self.auto_alignB.setToolTip(QCoreApplication.translate("Form", u"This method only works on profiles without offsets(Rotations are allowed).", None))
+#endif // QT_CONFIG(tooltip)
+        self.auto_alignB.setText(QCoreApplication.translate("Form", u"Auto-Alignment B", None))
         self.realtime_update.setText(QCoreApplication.translate("Form", u"Real-time update view", None))
     # retranslateUi
 

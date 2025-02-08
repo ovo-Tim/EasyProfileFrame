@@ -1,7 +1,8 @@
-from freecad.easy_profile_frame.typing import SelectionObject, Feature, Body, AppPart, SketchObject
+from freecad.easy_profile_frame.typing import SelectionObject, Feature, Body, AppPart, SketchObject, Edge
 import Part
 import FreeCAD as App
 from typing import Any
+import math
 
 def IsAllWires(objects: list[SelectionObject]) -> bool:
     for obj in objects:
@@ -65,3 +66,36 @@ def CopyObj(source: App.DocumentObject|Feature, target: Body|AppPart) -> Any:
     obj = target.addObject(obj)[0]
     obj.Label = source.Label
     return obj
+
+def calculate_edges_angle(edge1:Edge, edge2:Edge):
+    """
+    Calculate the angle between two Part.Edge objects.
+
+    Parameters:
+    edge1 -- The first edge (Part.Edge)
+    edge2 -- The second edge (Part.Edge)
+
+    Returns:
+    The angle between the two edges in degrees.
+    """
+    # Get the direction vector of the first edge (using the tangent at the start point)
+    vec1 = edge1.tangentAt(edge1.FirstParameter)
+
+    # Get the direction vector of the second edge (using the tangent at the start point)
+    vec2 = edge2.tangentAt(edge2.FirstParameter)
+
+    # Calculate the dot product and the magnitude product of the two direction vectors
+    dot_product = vec1.dot(vec2)
+    magnitude_product = vec1.Length * vec2.Length
+
+    # Ensure the denominator is not 0 to avoid division by zero error
+    if magnitude_product == 0:
+        raise ValueError("Edges do not have a valid direction to compute an angle.")
+
+    # Calculate the angle in radians
+    angle_radians = math.acos(dot_product / magnitude_product)
+
+    # Convert the angle to degrees
+    angle_degrees = math.degrees(angle_radians)
+
+    return angle_degrees

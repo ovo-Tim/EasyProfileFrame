@@ -172,7 +172,7 @@
         <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
-           <enum>Qt::Orientation::Vertical</enum>
+           <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
@@ -227,6 +227,9 @@
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox_2">
+     <property name="toolTip">
+      <string>This method only works on profiles without offsets(Rotations are allowed).</string>
+     </property>
      <property name="title">
       <string>Corner joint method</string>
      </property>
@@ -239,19 +242,10 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="auto_alignA">
+       <widget class="QRadioButton" name="no_processing">
         <property name="text">
-         <string>Auto-Alignment A</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="auto_alignB">
-        <property name="text">
-         <string>Auto-Alignment B</string>
+         <string>No processing
+(Stretch  according to the original line length)</string>
         </property>
        </widget>
       </item>
@@ -260,26 +254,31 @@
         <property name="text">
          <string>Miter Cut(Support non-rectangular)</string>
         </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="reserved">
-        <property name="text">
-         <string>Reserved(Manual stretch later)</string>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="no_processing">
+       <widget class="QRadioButton" name="auto_alignA">
+        <property name="toolTip">
+         <string>This method only works on profiles without offsets(Rotations are allowed).</string>
+        </property>
         <property name="text">
-         <string>No processing(Stretch  according to the original line length)</string>
+         <string>Auto-Alignment A</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="overlap">
+       <widget class="QRadioButton" name="auto_alignB">
+        <property name="toolTip">
+         <string>This method only works on profiles without offsets(Rotations are allowed).</string>
+        </property>
         <property name="text">
-         <string>Overlap</string>
+         <string>Auto-Alignment B</string>
         </property>
        </widget>
       </item>
