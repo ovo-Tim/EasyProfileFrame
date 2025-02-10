@@ -117,7 +117,6 @@ class ProfileFrameObject:
         if obj.ChamferAngleR == 0 and obj.ExtendedLengthR < 0:
             pad_length += obj.ExtendedLengthR.Value # Then set offset below
             _offset_z = obj.ExtendedLengthR
-            print("offsetZ", _offset_z)
         baseObj = self.pad(sketchL, pad_length, obj, obj.EdgeName, reversed=True)
 
         # Chamfer
@@ -142,7 +141,6 @@ class ProfileFrameObject:
 
         obj.Length = FCUnits.Quantity(pad_length + obj.ExtendedLengthL.Value + obj.ExtendedLengthR.Value)
 
-        print(baseObj, baseObj.Name)
         obj.Shape = baseObj.Shape
 
         # Apply offset and rotation to the obj

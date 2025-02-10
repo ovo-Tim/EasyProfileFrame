@@ -217,18 +217,16 @@ class CreateProfilesBySketchPanel:
             for k, p2 in enumerate(points2):
                 if p == p2: return (p, j, k)
 
-    def getChamferDirection(self, rotation: App.Rotation, edge: Edge, interact_vector: App.Vector, reverse: bool = False):
+    def getChamferDirection(self, rotation: App.Rotation, edge: Edge, interact_vector: App.Vector):
         # dire = edge.Placement.Rotation * edge.Curve.Direction
         p = edge.Vertexes[0].Point if edge.Vertexes[0].Point != interact_vector else edge.Vertexes[1].Point
         dire = p - interact_vector
         dire = dire.normalize()
         dire2 = rotation.inverted() * dire
-        print(f"Interact: {interact_vector}, point: {p}")
-        print("Dire:", dire, dire2)
         if dire2.x > 0 and dire2.y == 0:
-            return 1 if not reverse else 3
+            return 1
         elif dire2.x < 0 and dire2.y == 0:
-            return 3 if not reverse else 1
+            return 3
         elif dire2.y > 0 and dire2.x == 0:
             return 4
         elif dire2.y < 0 and dire2.x == 0:
@@ -258,7 +256,6 @@ class CreateProfilesBySketchPanel:
                 chamfer_angle = calculate_edges_angle(line1_obj, line2_obj)/2
                 dire1 = self.getChamferDirection(frame_obj.Placement.Rotation, line2_obj, interact_vertex[0])
                 dire2 = self.getChamferDirection(frame_obj2.Placement.Rotation, line1_obj, interact_vertex[0])
-                print(dire1, dire2)
                 if dire1 is None or dire2 is None:
                     continue
                 setattr(frame_obj, f"ChamferAngle{'R' if interact_vertex[1] else 'L'}", chamfer_angle)
