@@ -7,9 +7,9 @@ for ui_file in *.ui; do
         # Generate the corresponding .py file name by replacing the .ui extension with .py
         py_file="${ui_file%.ui}.py"
 
-        # Use pyside6-uic to compile the .ui file into a .py file
+        # Use PySide-uic to compile the .ui file into a .py file
         echo "Compiling $ui_file to $py_file..."
-        pyside6-uic "$ui_file" -o "$py_file"
+        PySide-uic "$ui_file" -o "$py_file"
 
         # Check if the compilation was successful
         if [ $? -eq 0 ]; then

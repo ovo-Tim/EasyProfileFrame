@@ -4,8 +4,8 @@ import os
 from freecad.easy_profile_frame import ICONPATH, RESSOURCESPATH
 from freecad.easy_profile_frame.resources.ui import CreateProfilesBySketchPanel as CreateProfilesBySketchPanelUI
 from freecad.easy_profile_frame.typing import SelectionObject, SketchObject, Body, AppPart, Edge, Vertex
-from PySide6.QtWidgets import QWidget, QButtonGroup
-from PySide6.QtCore import Signal
+from PySide.QtWidgets import QWidget, QButtonGroup
+from PySide.QtCore import Signal
 from FreeCAD import Units as FCUnits
 from .ProfileFrameObject import CreateProfileFrameBody
 from .utils import GetAllWireNames, GetSubEdges, IsAllWires, calculate_edges_angle
