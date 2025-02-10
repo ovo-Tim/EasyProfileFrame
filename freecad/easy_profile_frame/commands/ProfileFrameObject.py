@@ -48,6 +48,7 @@ class ProfileFrameObject:
         # Initialize state variables(Needs to be stored when the document is saved)
         self._last_offset_x = obj.OffsetX
         self._last_offset_y = obj.OffsetY
+        self._last_offset_z = FCUnits.Quantity(0)
         self._last_angle = obj.Angle
         self.chamfer_sketch_cache:list = [None, None]
         self.sketchLableL = None
@@ -60,15 +61,15 @@ class ProfileFrameObject:
         if hasattr(obj, "ViewObject"):
             obj.ViewObject.Proxy = CustomObjectViewProvider(obj.ViewObject)
 
-    def apply_offset_and_rotation(self, obj, offset_x, offset_y, angle):
+    def apply_offset_and_rotation(self, obj, offset_x, offset_y, angle, offset_z=FCUnits.Quantity(0)):
         """Apply offset and rotation to the sketch"""
         # Check if OffsetX, OffsetY, or Angle has changed
-        if (offset_x == self._last_offset_x and offset_y == self._last_offset_y and angle == self._last_angle):
+        if (offset_x == self._last_offset_x and offset_y == self._last_offset_y and angle == self._last_angle and offset_z == self._last_offset_z):
             # print("No change")
             return
 
         # Convert offsets to a vector
-        offset_vector = App.Vector(offset_x, offset_y, 0)
+        offset_vector = App.Vector(offset_x, offset_y, offset_z)
 
         # Set the offset
         obj.AttachmentOffset.Base = offset_vector
@@ -83,6 +84,7 @@ class ProfileFrameObject:
         # Update state variables
         self._last_offset_x = offset_x
         self._last_offset_y = offset_y
+        self._last_offset_z = offset_z
         self._last_angle = angle
 
     def onDocumentRestored(self, obj):
@@ -93,6 +95,7 @@ class ProfileFrameObject:
 
     def execute(self, obj):
         """Core method for building the geometry"""
+        _offset_z = FCUnits.Quantity(0)
         # Validate necessary properties
         if not obj.Sketch or not obj.EdgeName:
             return
@@ -109,6 +112,12 @@ class ProfileFrameObject:
         # Perform the sweep
         edge:Edge = edge_sketch.getSubObject(subedge)
         pad_length = edge.Length
+        if obj.ChamferAngleL == 0:
+            pad_length += obj.ExtendedLengthL.Value
+        if obj.ChamferAngleR == 0 and obj.ExtendedLengthR < 0:
+            pad_length += obj.ExtendedLengthR.Value # Then set offset below
+            _offset_z = obj.ExtendedLengthR
+            print("offsetZ", _offset_z)
         baseObj = self.pad(sketchL, pad_length, obj, obj.EdgeName, reversed=True)
 
         # Chamfer
@@ -117,8 +126,7 @@ class ProfileFrameObject:
             obj.ExtendedLengthL = FCUnits.Quantity(extended_length)
             obj.setEditorMode('ExtendedLengthL', 1)
         else:
-            obj.ExtendedLengthL = FCUnits.Quantity(0)
-            obj.setEditorMode('ExtendedLengthL', 0)
+            self.clean_chamfer(obj, f"Chamfer_{obj.Name}_L")
         if obj.ChamferAngleR > 0:
             sketchR = self.getSketchR(obj, pad_length)
             baseObj, extended_length = self.create_chamfer(sketchR, obj.ChamferAngleR, obj.ChamferDirectionR, obj, baseObj, f"Chamfer_{obj.Name}_R",
@@ -126,15 +134,19 @@ class ProfileFrameObject:
             obj.ExtendedLengthR = FCUnits.Quantity(extended_length)
             obj.setEditorMode('ExtendedLengthR', 1)
         else:
-            obj.ExtendedLengthR = FCUnits.Quantity(0)
-            obj.setEditorMode('ExtendedLengthR', 0)
+            self.clean_chamfer(obj, f"Chamfer_{obj.Name}_R", right=True)
+            # Extend the right side
+            if obj.ExtendedLengthR > 0:
+                sketchR = self.getSketchR(obj, pad_length)
+                baseObj = self.pad(sketchR, obj.ExtendedLengthR, obj, f"ExtendR_{obj.Name}", baseFeature=baseObj)
 
         obj.Length = FCUnits.Quantity(pad_length + obj.ExtendedLengthL.Value + obj.ExtendedLengthR.Value)
 
+        print(baseObj, baseObj.Name)
         obj.Shape = baseObj.Shape
 
         # Apply offset and rotation to the obj
-        self.apply_offset_and_rotation(obj, obj.OffsetX, obj.OffsetY, obj.Angle)
+        self.apply_offset_and_rotation(obj, obj.OffsetX, obj.OffsetY, obj.Angle, offset_z=_offset_z)
 
         obj.AttachmentSupport = [(edge_sketch, subedge)]
         obj.MapMode = 'NormalToEdge'
@@ -158,6 +170,7 @@ class ProfileFrameObject:
     def __getstate__(self):
         state = {'_last_offset_x': self._last_offset_x.toStr(),
                  '_last_offset_y': self._last_offset_y.toStr(),
+                 '_last_offset_z': self._last_offset_z.toStr(),
                  '_last_angle': self._last_angle.toStr(),
                  'chamfer_sketch_cache': self.chamfer_sketch_cache,
                  'sketchLableL': self.sketchLableL,
@@ -168,23 +181,40 @@ class ProfileFrameObject:
     def __setstate__(self, state):
         self._last_offset_x = FCUnits.Quantity(state['_last_offset_x'])
         self._last_offset_y = FCUnits.Quantity(state['_last_offset_y'])
+        self._last_offset_z = FCUnits.Quantity(state['_last_offset_z'])
         self._last_angle = FCUnits.Quantity(state['_last_angle'])
         self.chamfer_sketch_cache = state['chamfer_sketch_cache']
         self.sketchLableL = state['sketchLableL']
         self.sketchR = state['sketchR']
+
+    def clean_chamfer(self, body:Body, name, right=False):
+        pocket_obj = body.getObject(f"Chamfer_{name}")
+        if pocket_obj is not None:
+            App.ActiveDocument.removeObject(pocket_obj.Name)
+        chamfer_sketch = body.getObject(f"chamferCuttingSketch_{name}")
+        if chamfer_sketch is not None:
+            App.ActiveDocument.removeObject(chamfer_sketch.Name)
+        extended_obj = body.getObject(f"frame_Chamfer_extend_{name}")
+        if extended_obj is not None:
+            App.ActiveDocument.removeObject(extended_obj.Name)
+            if right:
+                body.ExtendedLengthR = FCUnits.Quantity(0)
+                body.setEditorMode('ExtendedLengthR', 0)
+            else:
+                body.ExtendedLengthL = FCUnits.Quantity(0)
+                body.setEditorMode('ExtendedLengthL', 0)
 
     def create_chamfer(self, sketch: SketchObject, angle: float, direction: int, body: Body, baseFeature, name, offset=0.0, right=False):
         '''
         sketch: The sketch used to extend the profile.
         direction: 1~4
         '''
-        # print(f"Creating chamfer, angle: {angle}, direction: {direction}")
         boundBox = sketch.Shape.BoundBox
         xy_extremes = (boundBox.XMin, boundBox.XMax, boundBox.YMin, boundBox.YMax)
 
         # Extend tan(angle)*width/2
         # TODO: It's better to set math expression instead of approximate value, but I guess nobody cares.(I'm too lazy to do it.)
-        if direction in (1, 2):
+        if direction in (1, 3):
             width = xy_extremes[1] - xy_extremes[0]
         else:
             width = xy_extremes[3] - xy_extremes[2]
@@ -220,13 +250,13 @@ class ProfileFrameObject:
     def draw_chamfer_sketch(self, chamfer_sketch: SketchObject, length: float, width: float, baseFeature, direction, offset, right):
         chamfer_sketch.AttachmentSupport = [(baseFeature, '')]
         chamfer_sketch.MapMode = 'ObjectXY'
-        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0 , 0, offset),  App.Rotation(0, 90 + right*180, direction*90))
+        chamfer_sketch.AttachmentOffset = App.Placement(App.Vector(0 , 0, offset),  App.Rotation(0, 90, direction*90))
         chamfer_sketch.Visibility = False
         chamfer_sketch.recompute()
 
         tx = length
         ty = width / 2
-        triangle = [(-tx, ty), (-tx, -ty), (tx, ty)]
+        triangle = [(-tx, ty), (-tx, -ty), (tx, ty)] if not right else [(tx, ty), (tx, -ty), (-tx, ty)]
         chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[0][0], triangle[0][1], 0),
                                     App.Vector(triangle[1][0], triangle[1][1], 0)), False)
         chamfer_sketch.addGeometry(Part.LineSegment(App.Vector(triangle[1][0], triangle[1][1], 0),
@@ -254,7 +284,7 @@ class ProfileFrameObject:
         if sketch.Label == self.sketchLableL:
             return
         if self.sketchLableL is not None:
-            App.ActiveDocument.removeObject(self.sketchLableL)
+            App.ActiveDocument.removeObject(obj.Sketch)
             self.sketchLableL = None # Unnecessary
         obj.Sketch = CopyObj(sketch, obj).Name
         self.sketchLableL = sketch.Label

@@ -14,13 +14,6 @@ translate=App.Qt.translate
 QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
 LIB_PATH = os.path.join(RESSOURCESPATH, "PartLib")
 
-DIRECTION_MAP = {
-    3: 1,
-    1: 3,
-    2: 4,
-    4: 2
-}
-
 def getObjectFromName(name:str, doc:App.Document|Body):
     obj, subname = name.split(':')
     return doc.getObject(obj).getSubObject(subname)
@@ -171,7 +164,7 @@ class CreateProfilesBySketchPanel:
     def __init__(self):
         self.form = CreateProfilesBySketchWidget()
         self.form.add_wires()
-        self.drawed: dict[str, Body] = {}
+        self.drew: dict[str, Body] = {}
 
         # self.body:Body = App.ActiveDocument.addObject('PartDesign::Body', 'Body')
         self.part: AppPart = App.ActiveDocument.addObject('App::Part', 'Part')
@@ -188,7 +181,7 @@ class CreateProfilesBySketchPanel:
         if self.form.radioBtn_lib.isChecked():
             sketch = self.form.current_lib.getObjectsByLabel(self.form.lib_sketches.currentText())[0]
         elif self.form.radioBtn_custom.isChecked():
-            sketch = self.form.current_lib.getObjectsByLabel(self.form.custom_sketch)[0]
+            sketch = self.form.custom_sketch
 
         # Get the lines
         lineNames: list[str] = [self.form.wire_list.item(i).text() for i in range(self.form.wire_list.count())]
@@ -211,78 +204,79 @@ class CreateProfilesBySketchPanel:
         for name in lines:
             # Create new body
             obj = CreateProfileFrameBody(sketch, name, self.part, f'Frame_{name}')
-            self.drawed[name] = obj
+            obj.ChamferAngleL = 0
+            obj.ChamferAngleR = 0
+            self.drew[name] = obj
             self.set_offset(obj)
             obj.recompute()
 
-    def getInteract_vertex(self, vertex1, vertex2) -> tuple[Vertex, int, int]|None:
+    def getInteract_vector(self, vertex1, vertex2) -> tuple[App.Vector, int, int]|None:
         points1 = [i.Point for i in vertex1]
         points2 = [i.Point for i in vertex2]
         for j, p in enumerate(points1):
             for k, p2 in enumerate(points2):
                 if p == p2: return (p, j, k)
 
-    def getChamferDirection(self, vertex1: list, vertex2: list, interact_vertex: Vertex):
-        for i in vertex1:
-            if i.Point != interact_vertex:
-                print(interact_vertex, i.Point)
-                dire1 = interact_vertex - i.Point
-                break
-        for i in vertex2:
-            if i.Point!= interact_vertex:
-                print(interact_vertex, i.Point)
-                dire2 = interact_vertex - i.Point
-                break
-
-        j_hat = dire1
-        i_hat = App.Matrix(App.Vector(0,-1,0),App.Vector(1,0,0),App.Vector(0,0,1)) * j_hat
-        k_hat = App.Matrix(App.Vector(1,0,0),App.Vector(0,0,1),App.Vector(0,-1,0)) * j_hat
-        dire2:Vertex = App.Matrix(i_hat, j_hat, k_hat) * dire2
-
-        if dire2.x > 0 and dire2.z == 0:
-            return 1
-        elif dire2.x < 0 and dire2.z == 0:
-            return 3
-        elif dire2.z > 0 and dire2.x == 0:
-            return 2
-        elif dire2.z < 0 and dire2.x == 0:
+    def getChamferDirection(self, rotation: App.Rotation, edge: Edge, interact_vector: App.Vector, reverse: bool = False):
+        # dire = edge.Placement.Rotation * edge.Curve.Direction
+        p = edge.Vertexes[0].Point if edge.Vertexes[0].Point != interact_vector else edge.Vertexes[1].Point
+        dire = p - interact_vector
+        dire = dire.normalize()
+        dire2 = rotation.inverted() * dire
+        print(f"Interact: {interact_vector}, point: {p}")
+        print("Dire:", dire, dire2)
+        if dire2.x > 0 and dire2.y == 0:
+            return 1 if not reverse else 3
+        elif dire2.x < 0 and dire2.y == 0:
+            return 3 if not reverse else 1
+        elif dire2.y > 0 and dire2.x == 0:
             return 4
+        elif dire2.y < 0 and dire2.x == 0:
+            return 2
         else:
             return None
 
     def miter_cut(self, sketch: SketchObject, lines: list[str]):
-        self.no_processing(sketch, lines)
+        for name in lines:
+            # Create new body
+            obj = CreateProfileFrameBody(sketch, name, self.part, f'Frame_{name}')
+            self.drew[name] = obj
+            self.set_offset(obj)
+            obj.recompute()
         for i, line1N in enumerate(lines):
             for line2N in lines[i+1:]:
                 line1_obj: Edge = getObjectFromName(line1N, App.ActiveDocument)
                 line2_obj: Edge = getObjectFromName(line2N, App.ActiveDocument)
-                # intersections = line1_obj.Curve.intersectCC(line2_obj.Curve)
-                # intersections= [i.toShape().Point for i in intersections]
-                interact_vertex = self.getInteract_vertex(line1_obj.Vertexes, line2_obj.Vertexes)
+
+                frame_obj = self.drew[line1N]
+                frame_obj2 = self.drew[line2N]
+
+                interact_vertex = self.getInteract_vector(line1_obj.Vertexes, line2_obj.Vertexes)
                 if interact_vertex is None:
                     continue
 
                 chamfer_angle = calculate_edges_angle(line1_obj, line2_obj)/2
-                dire = self.getChamferDirection(line1_obj.Vertexes, line2_obj.Vertexes, interact_vertex[0])
-                if dire is None:
+                dire1 = self.getChamferDirection(frame_obj.Placement.Rotation, line2_obj, interact_vertex[0])
+                dire2 = self.getChamferDirection(frame_obj2.Placement.Rotation, line1_obj, interact_vertex[0])
+                print(dire1, dire2)
+                if dire1 is None or dire2 is None:
                     continue
-                App.Console.PrintMessage(f"Create chamfer at {interact_vertex[0]}. Angle: {chamfer_angle}° \n")
-                setattr(self.drawed[line1N], f"ChamferAngle{'R' if interact_vertex[1] else 'L'}", chamfer_angle)
-                setattr(self.drawed[line2N], f"ChamferAngle{'R' if interact_vertex[2] else 'L'}", chamfer_angle)
+                setattr(frame_obj, f"ChamferAngle{'R' if interact_vertex[1] else 'L'}", chamfer_angle)
+                setattr(frame_obj2, f"ChamferAngle{'R' if interact_vertex[2] else 'L'}", chamfer_angle)
 
-                setattr(self.drawed[line1N], f"ChamferDirection{'R' if interact_vertex[1] else 'L'}", dire)
-                setattr(self.drawed[line2N], f"ChamferDirection{'R' if interact_vertex[2] else 'L'}", DIRECTION_MAP[dire])
+                setattr(frame_obj, f"ChamferDirection{'R' if interact_vertex[1] else 'L'}", dire1)
+                setattr(frame_obj2, f"ChamferDirection{'R' if interact_vertex[2] else 'L'}", dire2)
 
-                self.drawed[line1N].recompute()
-                self.drawed[line2N].recompute()
+                frame_obj.recompute()
+                frame_obj2.recompute()
 
     def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
-            remove_list = set(self.drawed.keys()) - set(lines)
+            remove_list = set(self.drew.keys()) - set(lines)
             for name in remove_list:
-                self.drawed[name].removeObjectsFromDocument()
-                App.ActiveDocument.removeObject(self.drawed[name].Name)
-                self.drawed.pop(name)
+                self.drew[name].removeObjectsFromDocument()
+                App.ActiveDocument.removeObject(self.drew[name].Name)
+                self.drew.pop(name)
 
         if joint_type == 'NoProcessing':
             self.no_processing(sketch, lines)
