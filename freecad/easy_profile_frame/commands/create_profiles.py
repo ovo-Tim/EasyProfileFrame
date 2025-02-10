@@ -193,6 +193,10 @@ class CreateProfilesBySketchPanel:
             self.draw(sketch, lines, 'NoProcessing')
         elif self.form.miter_cut.isChecked():
             self.draw(sketch, lines, 'MiterCut')
+        elif self.form.auto_alignA.isChecked():
+            self.draw(sketch, lines, 'AutoAlignA')
+        elif self.form.auto_alignB.isChecked():
+            self.draw(sketch, lines, 'AutoAlignB')
 
     def set_offset(self, obj):
         # Set offset and rotation
@@ -267,6 +271,41 @@ class CreateProfilesBySketchPanel:
                 frame_obj.recompute()
                 frame_obj2.recompute()
 
+    def auto_align(self, sketch: SketchObject, lines: list[str], mode: int):
+        self.no_processing(sketch, lines)
+        for i, line1N in enumerate(lines):
+            for line2N in lines[i+1:]:
+                line1_obj: Edge = getObjectFromName(line1N, App.ActiveDocument)
+                line2_obj: Edge = getObjectFromName(line2N, App.ActiveDocument)
+                frame_obj = self.drew[line1N]
+                frame_obj2 = self.drew[line2N]
+
+                interact_vertex = self.getInteract_vector(line1_obj.Vertexes, line2_obj.Vertexes)
+                if interact_vertex is None:
+                    continue
+                if calculate_edges_angle(line1_obj, line2_obj) != 90:
+                    continue
+
+                boundBox = sketch.Shape.BoundBox
+                dire1 = self.getChamferDirection(frame_obj.Placement.Rotation, line2_obj, interact_vertex[0])
+                dire2 = self.getChamferDirection(frame_obj2.Placement.Rotation, line1_obj, interact_vertex[0])
+
+                extend1 = (boundBox.XMax - boundBox.XMin) if dire1 in (1, 3) else (boundBox.YMax - boundBox.YMin)
+                extend2 = (boundBox.XMax - boundBox.XMin) if dire2 in (1, 3) else (boundBox.YMax - boundBox.YMin)
+                extend1 = extend1/2
+                extend2 = extend2/2
+                if mode:
+                    extend2 = -extend2
+                else:
+                    extend1 = -extend1
+                print(extend1, extend2)
+                # Allow negative value
+                frame_obj.setExpression(f"ExtendedLength{'R' if interact_vertex[1] else 'L'}", str(extend1))
+                frame_obj2.setExpression(f"ExtendedLength{'R' if interact_vertex[2] else 'L'}", str(extend2))
+
+                frame_obj.recompute()
+                frame_obj2.recompute()
+
     def draw(self, sketch: SketchObject, lines: list[str], joint_type: str, remove_old: bool = True):
         if remove_old:
             remove_list = set(self.drew.keys()) - set(lines)
@@ -279,6 +318,10 @@ class CreateProfilesBySketchPanel:
             self.no_processing(sketch, lines)
         elif joint_type == 'MiterCut':
             self.miter_cut(sketch, lines)
+        elif joint_type == 'AutoAlignA':
+            self.auto_align(sketch, lines, 0)
+        elif joint_type == 'AutoAlignB':
+            self.auto_align(sketch, lines, 1)
 
 class CreateProfilesCommandBase:
 

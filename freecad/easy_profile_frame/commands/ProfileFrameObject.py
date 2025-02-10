@@ -112,11 +112,11 @@ class ProfileFrameObject:
         # Perform the sweep
         edge:Edge = edge_sketch.getSubObject(subedge)
         pad_length = edge.Length
+        if obj.ChamferAngleR == 0:
+            pad_length += obj.ExtendedLengthR.Value
         if obj.ChamferAngleL == 0:
-            pad_length += obj.ExtendedLengthL.Value
-        if obj.ChamferAngleR == 0 and obj.ExtendedLengthR < 0:
-            pad_length += obj.ExtendedLengthR.Value # Then set offset below
-            _offset_z = obj.ExtendedLengthR
+            pad_length += obj.ExtendedLengthL.Value # Then set offset below
+            _offset_z = obj.ExtendedLengthL
         baseObj = self.pad(sketchL, pad_length, obj, obj.EdgeName, reversed=True)
 
         # Chamfer
@@ -135,9 +135,9 @@ class ProfileFrameObject:
         else:
             self.clean_chamfer(obj, f"Chamfer_{obj.Name}_R", right=True)
             # Extend the right side
-            if obj.ExtendedLengthR > 0:
-                sketchR = self.getSketchR(obj, pad_length)
-                baseObj = self.pad(sketchR, obj.ExtendedLengthR, obj, f"ExtendR_{obj.Name}", baseFeature=baseObj)
+            # if obj.ExtendedLengthR > 0:
+            #     sketchR = self.getSketchR(obj, pad_length)
+            #     baseObj = self.pad(sketchR, obj.ExtendedLengthR, obj, f"ExtendR_{obj.Name}", baseFeature=baseObj, reversed=True)
 
         obj.Length = FCUnits.Quantity(pad_length + obj.ExtendedLengthL.Value + obj.ExtendedLengthR.Value)
 
