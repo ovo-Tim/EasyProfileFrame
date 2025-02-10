@@ -184,6 +184,7 @@ class ProfileFrameObject:
         self.chamfer_sketch_cache = state['chamfer_sketch_cache']
         self.sketchLableL = state['sketchLableL']
         self.sketchR = state['sketchR']
+        self.Type = "ProfileFrameObject"
 
     def clean_chamfer(self, body:Body, name, right=False):
         pocket_obj = body.getObject(f"Chamfer_{name}")

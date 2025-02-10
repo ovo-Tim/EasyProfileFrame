@@ -17,7 +17,7 @@ class EasyProfileFrame(Gui.Workbench):
     MenuText = translate("Workbench", "Easy profile frame")
     ToolTip = translate("Workbench", "a simple Easy profile frame")
     # Icon = os.path.join(ICONPATH, "cool.svg")
-    toolbox = ["EPF_CreateProfilesBySketcher"]
+    toolbox = ["EPF_CreateProfilesBySketcher", "EPF_GenerateBom"]
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
@@ -29,6 +29,7 @@ class EasyProfileFrame(Gui.Workbench):
         """
         # Register commands
         import freecad.easy_profile_frame.commands.create_profiles
+        import freecad.easy_profile_frame.commands.generate_bom
 
         App.Console.PrintMessage(translate(
             "Log",
