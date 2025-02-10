@@ -18,4 +18,3 @@ A FreeCAD workbench designed to simplify the creation of frames using profiles, 
 
 ## Countributors
 Thanks icons come from [MakerWorkbench](https://github.com/URJCMakerGroup/MakerWorkbench)
-- [（Mechanical Engineer）]()
