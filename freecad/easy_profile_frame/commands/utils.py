@@ -1,12 +1,22 @@
-from freecad.easy_profile_frame.typing import SelectionObject, Feature, Body, AppPart, SketchObject, Edge
+from freecad.easy_profile_frame.typing import (
+    SelectionObject,
+    Feature,
+    Body,
+    AppPart,
+    Edge,
+)
 import Part
 import FreeCAD as App
 from typing import Any
 import math
 
+
 def IsAllWires(objects: list[SelectionObject]) -> bool:
     for obj in objects:
-        if obj.Object.TypeId == 'Sketcher::SketchObject' or obj.Object.TypeId == 'Part::Part2DObjectPython':
+        if (
+            obj.Object.TypeId == "Sketcher::SketchObject"
+            or obj.Object.TypeId == "Part::Part2DObjectPython"
+        ):
             continue
         sub_objs: tuple[Part.Shape] = obj.SubObjects
         for subobj in sub_objs:
@@ -14,41 +24,47 @@ def IsAllWires(objects: list[SelectionObject]) -> bool:
                 return False
     return True
 
+
 def GetAllWireNames(objects: list[SelectionObject]) -> list[str]:
-    '''
+    """
     This might return an object like 'Sketch' or 'Line' or a subobject like 'Sketch:Edge1'.
     You might need to get subobject by `FreeCAD.ActiveDocument.getObject("Sketch").getSubObject("Edge1")`.
-    '''
+    """
     wires: list[str] = []
     for obj in objects:
         sub_obj_names: tuple[str, ...] = obj.SubElementNames
-        if (obj.Object.TypeId == 'Sketcher::SketchObject' or obj.Object.TypeId == 'Part::Part2DObjectPython') and sub_obj_names == ():
+        if (
+            obj.Object.TypeId == "Sketcher::SketchObject"
+            or obj.Object.TypeId == "Part::Part2DObjectPython"
+        ) and sub_obj_names == ():
             # If user directly select a sketch object or a line created by Draft.
             wires.append(obj.Object.Name)
             continue
         for subobjname in sub_obj_names:
-            if 'Edge' in subobjname: # Let's hope this won't be a problem.
-                wires.append(f'{obj.Object.Name}:{subobjname}')
+            if "Edge" in subobjname:  # Let's hope this won't be a problem.
+                wires.append(f"{obj.Object.Name}:{subobjname}")
     return wires
 
+
 def GetSubEdges(names: list[str]) -> list[str]:
-    '''
+    """
     Return {name: Part.Edge}.
-    '''
+    """
     objs = []
     for n in names:
-        if ':' in n:
-            parent, subobj = n.split(':')
+        if ":" in n:
+            parent, subobj = n.split(":")
             obj = App.ActiveDocument.getObject(parent).getSubObject(subobj)
             if isinstance(obj, Part.Edge):
                 objs.append(n)
         else:
             for i, edge in enumerate(App.ActiveDocument.getObject(n).Shape.Edges):
-                objs.append(f'{n}:Edge{i+1}')
+                objs.append(f"{n}:Edge{i+1}")
     return objs
 
-def GetExistent(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any:
-    '''Get an object from a document if it exists, otherwise create a new one.'''
+
+def GetExistent(name: str, obj_type: str, doc: App.Document | Body | AppPart) -> Any:
+    """Get an object from a document if it exists, otherwise create a new one."""
     obj = doc.getObject(name)
     if obj is not None:
         return obj
@@ -57,17 +73,19 @@ def GetExistent(name: str, obj_type: str, doc: App.Document|Body|AppPart) -> Any
     else:
         return doc.newObject(obj_type, name)
 
-def CopyObj(source: App.DocumentObject|Feature, target: Body|AppPart) -> Any:
-    '''
+
+def CopyObj(source: App.DocumentObject | Feature, target: Body | AppPart) -> Any:
+    """
     Copy an object across documents.
-    '''
+    """
     doc = target.Document
-    obj:App.DocumentObject|Feature = doc.copyObject(source)
+    obj: App.DocumentObject | Feature = doc.copyObject(source)
     obj = target.addObject(obj)[0]
     obj.Label = source.Label
     return obj
 
-def calculate_edges_angle(edge1:Edge, edge2:Edge):
+
+def calculate_edges_angle(edge1: Edge, edge2: Edge):
     """
     Calculate the angle between two Part.Edge objects.
 

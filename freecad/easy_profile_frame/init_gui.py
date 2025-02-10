@@ -1,19 +1,21 @@
-import os
-import FreeCADGui as Gui
 import FreeCAD as App
-from freecad.easy_profile_frame import ICONPATH, TRANSLATIONSPATH
+import FreeCADGui as Gui
 
-translate=App.Qt.translate
-QT_TRANSLATE_NOOP=App.Qt.QT_TRANSLATE_NOOP
+from freecad.easy_profile_frame import TRANSLATIONSPATH
+
+translate = App.Qt.translate
+QT_TRANSLATE_NOOP = App.Qt.QT_TRANSLATE_NOOP
 
 # Add translations path
 Gui.addLanguagePath(TRANSLATIONSPATH)
 Gui.updateLocale()
 
+
 class EasyProfileFrame(Gui.Workbench):
     """
     class which gets initiated at startup of the gui
     """
+
     MenuText = translate("Workbench", "Easy profile frame")
     ToolTip = translate("Workbench", "a simple Easy profile frame")
     # Icon = os.path.join(ICONPATH, "cool.svg")
@@ -29,31 +31,31 @@ class EasyProfileFrame(Gui.Workbench):
         """
         # Register commands
         import freecad.easy_profile_frame.commands.create_profiles
-        import freecad.easy_profile_frame.commands.generate_bom
+        import freecad.easy_profile_frame.commands.generate_bom  # noqa: F401
 
-        App.Console.PrintMessage(translate(
-            "Log",
-            "Switching to easy_profile_frame") + "\n")
+        App.Console.PrintMessage(
+            translate("Log", "Switching to easy_profile_frame") + "\n"
+        )
 
         # NOTE: Context for this commands must be "Workbench"
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "Tools"), self.toolbox)
         self.appendMenu(QT_TRANSLATE_NOOP("Workbench", "Tools"), self.toolbox)
 
     def Activated(self):
-        '''
+        """
         code which should be computed when a user switch to this workbench
-        '''
-        App.Console.PrintMessage(translate(
-            "Log",
-            "Workbench easy_profile_frame activated.") + "\n")
+        """
+        App.Console.PrintMessage(
+            translate("Log", "Workbench easy_profile_frame activated.") + "\n"
+        )
 
     def Deactivated(self):
-        '''
+        """
         code which should be computed when this workbench is deactivated
-        '''
-        App.Console.PrintMessage(translate(
-            "Log",
-            "Workbench easy_profile_frame de-activated.") + "\n")
+        """
+        App.Console.PrintMessage(
+            translate("Log", "Workbench easy_profile_frame de-activated.") + "\n"
+        )
 
 
 Gui.addWorkbench(EasyProfileFrame())

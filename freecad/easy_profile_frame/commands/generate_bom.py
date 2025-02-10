@@ -4,6 +4,7 @@ from freecad.easy_profile_frame.typing import SelectionObject
 import os
 from freecad.easy_profile_frame import ICONPATH
 
+
 class GenerateBomCommand:
     def init_sheet(self, sheet):
         sheet.Label = "BOM of frame"
@@ -14,18 +15,30 @@ class GenerateBomCommand:
         sheet.set("D1", "Left chamfer angle")
         sheet.set("E1", "Right chamfer angle")
 
-    def GetObjects(self, selected_objects:list[SelectionObject]):
+    def GetObjects(self, selected_objects: list[SelectionObject]):
         objs = []
         for obj in selected_objects:
-            if hasattr(obj.Object, "Proxy") and hasattr(obj.Object.Proxy, "Type") and obj.Object.Proxy.Type == "ProfileFrameObject":
+            if (
+                hasattr(obj.Object, "Proxy")
+                and hasattr(obj.Object.Proxy, "Type")
+                and obj.Object.Proxy.Type == "ProfileFrameObject"
+            ):
                 objs.append(obj)
             if obj.Object.TypeId == "App::Part":
                 for subobj in obj.Object.Group:
-                    if hasattr(subobj, "Proxy") and hasattr(subobj.Proxy, "Type") and subobj.Proxy.Type == "ProfileFrameObject":
+                    if (
+                        hasattr(subobj, "Proxy")
+                        and hasattr(subobj.Proxy, "Type")
+                        and subobj.Proxy.Type == "ProfileFrameObject"
+                    ):
                         objs.append(subobj)
         if not objs:
             for obj in App.ActiveDocument.Objects:
-                if hasattr(obj, "Proxy") and hasattr(obj.Proxy, "Type") and obj.Proxy.Type == "ProfileFrameObject":
+                if (
+                    hasattr(obj, "Proxy")
+                    and hasattr(obj.Proxy, "Type")
+                    and obj.Proxy.Type == "ProfileFrameObject"
+                ):
                     objs.append(obj)
         return objs
 
@@ -46,9 +59,11 @@ class GenerateBomCommand:
 
     def GetResources(self):
         return {
-                "Pixmap"  : os.path.join(ICONPATH, "Workbench_Spreadsheet.svg"),
-                "Accel"   : "Shift+P",
-                "MenuText": "Generate BOM",
-                "ToolTip" : "Generate BOM of frame"}
+            "Pixmap": os.path.join(ICONPATH, "Workbench_Spreadsheet.svg"),
+            "Accel": "Shift+P",
+            "MenuText": "Generate BOM",
+            "ToolTip": "Generate BOM of frame",
+        }
+
 
 Gui.addCommand("EPF_GenerateBom", GenerateBomCommand())

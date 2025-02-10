@@ -1,4 +1,4 @@
-# References: 
+# References:
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
 # https://packaging.python.org/en/latest/guides/packaging-namespace-packages/#native-namespace-packages
 # https://packaging.python.org/en/latest/guides/single-sourcing-package-version/
@@ -15,8 +15,7 @@ description = "A FreeCAD workbench designed to simplify the creation of frames u
 readme = "README.md"
 license = {file = "LICENSE"}
 maintainers = [
-    {name = "Tim Tu", email = "ovo-tim@qq.com"
-    },
+    {name = "Tim Tu", email = "ovo-tim@qq.com"},
 ]
 requires-python = ">=3.8"
 dependencies = [""]
@@ -30,3 +29,6 @@ include-package-data = true
 
 [tool.setuptools.dynamic]
 version = {attr = "freecad.easy_profile_frame.__version__"}
+
+[tool.ruff]
+exclude = ["freecad/easy_profile_frame/resources/ui/CreateProfilesBySketchPanel.py"]
