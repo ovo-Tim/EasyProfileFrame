@@ -3,6 +3,7 @@ A FreeCAD workbench designed to simplify the creation of frames using profiles, 
 
 <video controls>
   <source src="./docs/vid.mp4" type="video/mp4">
+  <source src="https://github.com/ovo-Tim/EasyProfileFrame/raw/refs/heads/main/docs/vid.mp4" type="video/mp4">
 </video>
 (The video has been edited)
 
