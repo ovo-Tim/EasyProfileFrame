@@ -257,7 +257,7 @@ class ProfileFrameObject:
         baseFeature=None,
     ):
         pad_obj = GetExistent(
-            f'frame_{name.replace(':', '_')}', "PartDesign::Pad", body
+            f"frame_{name.replace(':', '_')}", "PartDesign::Pad", body
         )
         if (
             pad_obj.Profile != sketch
